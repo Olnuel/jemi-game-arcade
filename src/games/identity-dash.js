@@ -315,13 +315,18 @@ export class IdentityDash {
 
   clearItems() {
     for (const item of this.items) {
-      this.scene.remove(item.mesh);
-      item.mesh.traverse?.((child) => {
-        if (child.geometry && child.geometry !== this.character.children[0]?.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-      });
+      this.disposeItem(item);
     }
     this.items = [];
+  }
+
+  disposeItem(item) {
+    this.scene.remove(item.mesh);
+    item.mesh.traverse((child) => {
+      child.geometry?.dispose();
+      if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose());
+      else child.material?.dispose();
+    });
   }
 
   notify() {
@@ -383,7 +388,7 @@ export class IdentityDash {
     }
     this.items = this.items.filter((item) => {
       const keep = item.mesh.position.z < 5 && !item.collected && !(item.type === 'obstacle' && item.hit);
-      if (!keep) this.scene.remove(item.mesh);
+      if (!keep) this.disposeItem(item);
       return keep;
     });
     this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, this.character.position.x * 0.12, 2.8, dt);
