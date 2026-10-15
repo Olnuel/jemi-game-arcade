@@ -15,8 +15,10 @@ Production output is created with `npm run build`.
 
 - Identity Dash is playable with three lanes, moving obstacles, jumpable barriers, coins, lives, pause/resume, restart, score, and a saved local personal best.
 - Avatar Jump and Salubata are listed as in development.
-- One shared Three.js player-character builder consumes a normalized style object. The displayed visitor preview uses a local palette.
-- The Start.ng identity module is deliberately unconfigured. The inspected repository and available public documentation did not provide a supported session, profile-style schema, or SDK contract. The app does not claim to sign users in or to use their actual managed styling.
+- One shared Three.js player-character builder consumes Start.ng's centrally managed body, skin, outfit, hair, hat, and accessory style fields.
+- On a `*.start.ng` game address, the adapter asks the documented `https://start.ng/connect` page for `{ id, name, style }` through a source- and origin-checked `postMessage` handshake. It never reads or stores Start.ng credentials or email.
+- On a Start.ng address, signed-in players see their account name and saved look in Identity Dash. Signed-out players can use the Start.ng sign-in return flow; local previews remain guests.
+- The Start.ng integration follows the public [Lane Dash platform example](https://github.com/Blackburn0/HNG-Game), including its `startng:whoami` message and style field schema. End-to-end confirmation for this arcade requires uploading it and opening the resulting `*.start.ng` address.
 
-To complete that integration, supply the authoritative Start.ng app session integration guide and the centrally managed character-style schema/SDK. The `src/identity/startng.js` adapter is the single place to map those verified inputs.
+To confirm the hosted integration, upload this public repository through the Start.ng profile's **Your games** section and open the assigned game address. The browser-hosted connect endpoint is unavailable from ordinary `localhost` or GitHub Pages origins.
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { animatePlayerCharacter, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
 
 const LANES = [-1.55, 0, 1.55];
 const randomLane = () => Math.floor(Math.random() * LANES.length);
@@ -183,6 +183,10 @@ export class IdentityDash {
     frame.position.z = -0.075;
     sign.add(frame);
     this.scene.add(sign);
+  }
+
+  setStyle(style = PREVIEW_STYLE) {
+    applyPlayerCharacterStyle(this.character, style);
   }
 
   resize() {

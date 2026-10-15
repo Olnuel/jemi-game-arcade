@@ -1,6 +1,5 @@
-import './style.css';
 import { IdentityDash } from './games/identity-dash.js';
-import { readStartNgIdentity } from './identity/startng.js';
+import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, START_NG, startNgSignIn } from './identity/startng.js';
 import { PREVIEW_STYLE } from './identity/player-character.js';
 
 const games = [
@@ -30,7 +29,6 @@ const games = [
   },
 ];
 
-const identity = readStartNgIdentity();
 const app = document.querySelector('#app');
 
 app.innerHTML = `
@@ -42,11 +40,11 @@ app.innerHTML = `
       </a>
       <div class="topbar-right">
         <a class="text-link" href="https://start.ng" target="_blank" rel="noreferrer">Start.ng</a>
-        <div class="identity-chip" title="${identity.reason}">
-          <span class="status-dot"></span>
-          <span>VISITOR PREVIEW</span>
-          <span class="profile-avatar" aria-hidden="true">V</span>
-        </div>
+        <a class="identity-chip" id="identity-link" href="https://start.ng/" title="Open Start.ng">
+          <span class="status-dot" id="identity-dot"></span>
+          <span id="identity-label">${START_NG ? 'CHECKING START.NG' : 'VISITOR PREVIEW'}</span>
+          <span class="profile-avatar" id="header-avatar" aria-hidden="true">?</span>
+        </a>
       </div>
     </header>
 
@@ -94,11 +92,11 @@ app.innerHTML = `
         <div class="profile-panel">
           <div class="panel-heading"><span>YOUR PLAYER</span><span class="panel-lock" aria-hidden="true">◌</span></div>
           <div class="player-row">
-            <div class="player-avatar" aria-hidden="true"><span></span></div>
+            <div class="player-avatar" id="player-avatar" aria-hidden="true"><span></span></div>
             <div><strong id="player-name">Visitor</strong><span class="profile-state" id="profile-state">Style preview</span></div>
-            <span class="palette-swatch" aria-hidden="true"></span>
+            <span class="palette-swatch" id="palette-swatch" aria-hidden="true"></span>
           </div>
-          <p class="profile-note" id="profile-note">Start.ng profile styling will appear here when its supported connection is available.</p>
+          <p class="profile-note" id="profile-note">${START_NG ? 'Checking your centrally managed Start.ng character…' : 'Your Start.ng character styling appears when the game is hosted on your Start.ng address.'}</p>
         </div>
         <div class="controls-note"><span class="keyboard-icon" aria-hidden="true">⌘</span><p>Use the arrow keys and spacebar, or swipe across the road.</p></div>
         <footer class="shelf-footer"><span>MADE FOR THE PLAYERS</span><span>NG · 001</span></footer>
@@ -123,6 +121,47 @@ let activeGame = games[0];
 let runner;
 let toastTimer;
 let frameState = 'menu';
+let currentUser = null;
+let currentStyle = PREVIEW_STYLE;
+
+function applyIdentity(user) {
+  currentUser = user;
+  currentStyle = user ? mapStartNgStyle(user) : PREVIEW_STYLE;
+  runner?.setStyle(currentStyle);
+
+  const name = currentStyle.name;
+  const profileName = document.querySelector('#player-name');
+  const profileState = document.querySelector('#profile-state');
+  const profileNote = document.querySelector('#profile-note');
+  const identityLink = document.querySelector('#identity-link');
+  const identityLabel = document.querySelector('#identity-label');
+  const identityDot = document.querySelector('#identity-dot');
+  const headerAvatar = document.querySelector('#header-avatar');
+  const panel = document.querySelector('.profile-panel');
+
+  profileName.textContent = name;
+  profileState.textContent = user ? 'Start.ng profile · synced' : START_NG ? 'Guest player' : 'Style preview';
+  profileNote.textContent = user
+    ? 'Your saved Start.ng character is active in Identity Dash.'
+    : START_NG
+      ? 'Sign in with Start.ng to bring your saved character into the run.'
+      : 'Your Start.ng character appears here when this game is hosted on its Start.ng address.';
+  identityLabel.textContent = user ? `${name.toUpperCase()} · START.NG` : START_NG ? 'SIGN IN WITH START.NG' : 'VISITOR PREVIEW';
+  identityDot.classList.toggle('is-connected', Boolean(user));
+  identityDot.classList.toggle('is-checking', !user && START_NG);
+  headerAvatar.textContent = name.slice(0, 1).toUpperCase();
+  identityLink.title = user ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
+  panel.style.setProperty('--character-skin', currentStyle.skinColor);
+  panel.style.setProperty('--character-hair', currentStyle.hairColor);
+  panel.style.setProperty('--character-top', currentStyle.primaryColor);
+  panel.style.setProperty('--character-bottoms', currentStyle.secondaryColor);
+}
+
+function handleIdentityLink(event) {
+  if (!START_NG || currentUser) return;
+  event.preventDefault();
+  startNgSignIn();
+}
 
 function renderShelf() {
   gameList.innerHTML = games.map((game) => `
@@ -198,7 +237,7 @@ function updateRunUI(state) {
 function startRun() {
   if (!runner) {
     try {
-      runner = new IdentityDash(canvas, { style: PREVIEW_STYLE, onChange: updateRunUI });
+      runner = new IdentityDash(canvas, { style: currentStyle, onChange: updateRunUI });
     } catch (error) {
       showToast('This browser could not start the 3D street. Try a browser with WebGL enabled.');
       console.error(error);
@@ -226,17 +265,25 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
   });
 });
 renderShelf();
+document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
 document.querySelector('#best-value').textContent = String(Number(localStorage.getItem('arcade:identity-dash:best') || 0)).padStart(3, '0');
-if (identity.status !== 'connected') {
-  document.querySelector('#profile-note').title = identity.reason;
-}
 try {
-  runner = new IdentityDash(canvas, { style: PREVIEW_STYLE, onChange: updateRunUI });
+  runner = new IdentityDash(canvas, { style: currentStyle, onChange: updateRunUI });
 } catch (error) {
   sceneWrap.classList.add('no-webgl');
   showToast('This browser could not start the 3D street. Try a browser with WebGL enabled.');
   console.error(error);
 }
+
+readStartNgIdentity().then((identity) => {
+  applyIdentity(identity.user);
+  if (identity.status === 'unavailable' && START_NG) {
+    document.querySelector('#profile-note').textContent = 'Start.ng sign-in could not be checked. Reload this game to try again.';
+  }
+}).catch((error) => {
+  console.warn('Start.ng sign-in check failed.', error);
+});
+onStartNgUserChange(applyIdentity);
 
 window.addEventListener('pagehide', () => runner?.dispose(), { once: true });
 
