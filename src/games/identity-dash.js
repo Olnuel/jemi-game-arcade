@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { addMarketStall, addStringLights } from '../scene/lagos-night-market.js';
 
 const LANES = [-1.55, 0, 1.55];
 const randomLane = () => Math.floor(Math.random() * LANES.length);
@@ -104,6 +105,7 @@ export class IdentityDash {
     }
 
     this.createStreet();
+    addStringLights(this.scene, { start: [-4.5, 4.8, 1], end: [4.5, 4.8, -10], count: 12 });
     this.character = createPlayerCharacter(style);
     this.character.position.set(0, 0, 2.15);
     this.scene.add(this.character);
@@ -150,6 +152,12 @@ export class IdentityDash {
         }
       }
       this.scene.add(group);
+    }
+
+    for (let row = 0; row < 5; row += 1) {
+      const z = -5 - row * 14;
+      addMarketStall(this.scene, { x: -4.55, z, scale: 0.82, sign: row % 2 ? 'SUYA' : 'LAGOS', accent: '#d77544' });
+      addMarketStall(this.scene, { x: 4.55, z: z - 4, scale: 0.82, sign: row % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#168f7e' });
     }
 
     for (const side of [-1, 1]) {
@@ -413,7 +421,12 @@ export class IdentityDash {
     this.canvas.removeEventListener('touchstart', this.onTouchStart);
     this.canvas.removeEventListener('touchend', this.onTouchEnd);
     this.clearItems();
+    this.scene.traverse((object) => {
+      object.userData.disposeTexture?.dispose();
+      object.geometry?.dispose();
+      if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
+      else object.material?.dispose();
+    });
     this.renderer.dispose();
   }
 }
-

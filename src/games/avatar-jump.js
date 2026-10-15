@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const PLAYER_FOOT_OFFSET = 0.56;
@@ -58,12 +59,18 @@ export class AvatarJump {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#d9edff', '#25343d', 2.3));
-    const sun = new THREE.DirectionalLight('#ffe5b0', 2.8);
+    this.scene.add(new THREE.HemisphereLight('#b8d9df', '#27302c', 2.0));
+    const sun = new THREE.DirectionalLight('#ffd19a', 2.5);
     sun.position.set(-5, 10, 7);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     this.scene.add(sun);
+    const tealWash = new THREE.PointLight('#36cdb5', 22, 20, 2);
+    tealWash.position.set(-4.2, 5, -1.8);
+    this.scene.add(tealWash);
+    const amberWash = new THREE.PointLight('#ff9352', 27, 19, 2);
+    amberWash.position.set(4.4, 6.5, -1.4);
+    this.scene.add(amberWash);
 
     const haze = new THREE.Mesh(
       new THREE.PlaneGeometry(48, 60),
@@ -122,14 +129,26 @@ export class AvatarJump {
       }
     }
 
-    for (let index = 0; index < 14; index += 1) {
-      const lantern = new THREE.Mesh(
-        new THREE.SphereGeometry(0.085 + (index % 3) * 0.025, 10, 8),
-        new THREE.MeshBasicMaterial({ color: index % 2 ? '#f2a75e' : '#57d8c0' }),
-      );
-      lantern.position.set(index % 2 ? 3.8 : -3.8, 1.2 + (index * 1.12) % 10, -5 - (index % 4) * 1.4);
-      this.scene.add(lantern);
+    for (let level = 0; level < 4; level += 1) {
+      const y = -0.4 + level * 3.6;
+      addMarketStall(this.scene, { x: -5.25, y, z: -2.8, scale: 0.9, sign: level === 0 ? 'LAGOS' : 'SUYA', accent: '#d77544' });
+      addMarketStall(this.scene, { x: 5.25, y, z: -3.6, scale: 0.88, sign: level % 2 ? 'NIGHT BUKA' : 'FRESH', accent: '#168f7e' });
+      addStringLights(this.scene, { start: [-5.4, y + 3.1, -3], end: [5.4, y + 3.1, -4], count: 9 });
     }
+    const skyline = new THREE.Group();
+    skyline.position.set(0, 0, -10);
+    for (let index = 0; index < 11; index += 1) {
+      const width = 0.7 + (index % 3) * 0.35;
+      const height = 2.2 + ((index * 7) % 5) * 0.55;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.55), new THREE.MeshStandardMaterial({ color: index % 2 ? '#293a40' : '#332f31', roughness: 0.95 }));
+      tower.position.set(-6.3 + index * 1.25, height / 2 - 0.5, 0);
+      skyline.add(tower);
+    }
+    const skylineLabel = makeLabel('LAGOS AFTER DARK', '#ffca78');
+    skylineLabel.position.set(0, 4.5, 0.3);
+    skylineLabel.scale.set(4.5, 0.9, 1);
+    skyline.add(skylineLabel);
+    this.scene.add(skyline);
   }
 
   setStyle(style = PREVIEW_STYLE) { applyPlayerCharacterStyle(this.character, style); }
@@ -268,6 +287,7 @@ export class AvatarJump {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     this.scene.traverse((object) => {
+      object.userData.disposeTexture?.dispose();
       object.geometry?.dispose();
       if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
       else object.material?.dispose();

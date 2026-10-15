@@ -226,6 +226,7 @@ function updateRunUI(state) {
   frameState = state.state;
   sceneWrap.classList.toggle('is-playing', state.state !== 'menu');
   sceneWrap.classList.toggle('is-running', state.state === 'running');
+  document.body.classList.toggle('game-fullscreen', state.state !== 'menu');
   const isSalubata = activeGame.id === 'salubata';
   document.querySelector('#hud-score-label').textContent = activeGame.id === 'avatar-jump' ? 'CLIMB SCORE' : isSalubata ? 'POINTS' : 'DISTANCE';
   document.querySelector('#score-unit').textContent = activeGame.id === 'avatar-jump' ? 'pts' : isSalubata ? 'pts' : 'm';

@@ -90,7 +90,8 @@ function buildCharacter(character, styleInput) {
   const torso = addMesh(body, new THREE.CapsuleGeometry(0.25, 0.42, 5, 10), primary, [0, 0.43, 0]);
   torso.scale.x = style.body === 'female' ? 0.88 : 1;
   if (style.body === 'female') {
-    addMesh(body, new THREE.CylinderGeometry(0.29, 0.39, 0.25, 12), secondary, [0, 0.05, 0]);
+    // Keep centrally styled lower-body color while matching the streetwear trousers in the arcade art.
+    addMesh(body, new THREE.CylinderGeometry(0.3, 0.31, 0.09, 12), secondary, [0, 0.13, 0]);
   }
   addMesh(body, new THREE.BoxGeometry(0.42, 0.07, 0.29), secondary, [0, 0.16, 0.02]);
 
@@ -209,4 +210,3 @@ export function animatePlayerCharacter(character, elapsed, moving = true) {
   arms[0].rotation.x = -Math.sin(elapsed * 11) * 0.4 * pace;
   arms[1].rotation.x = Math.sin(elapsed * 11) * 0.4 * pace;
 }
-
