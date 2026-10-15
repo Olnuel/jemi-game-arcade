@@ -6,6 +6,5 @@
   "signatureInteraction": "Identity Dash visibly scrolls a three-lane street toward the player. Arrow keys or swipe shift lanes; Space, Up, W, or the touch button jump; coins update the score; collisions reduce three runs; Escape or the pause control pauses.",
   "motionGrammar": "Ease lane changes and camera follow; cycle the player's limbs while running; spin coins; use one low-amplitude bounce for jumps; preserve the complete interface for reduced-motion users.",
   "responsive": "Desktop uses a wide scene with a narrow right game shelf. Mobile stacks the same scene and shelf, keeps large touch controls reachable, and scales HUD text without clipping.",
-  "identityTruth": "No Start.ng API, SDK, session provider, or managed styling schema was present in the repository or verified in available public documentation. Display visitor preview only and leave the adapter unconfigured."
+  "identityTruth": "Identity Dash implements the public Start.ng connect example for signed-in identity and centrally managed style; local preview is marked visitor. Hosted end-to-end integration has not been verified."
 }
-
