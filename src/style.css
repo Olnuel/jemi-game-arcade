@@ -145,6 +145,21 @@ h1 em { color: var(--mint); font-style: normal; }
 .toast { position: fixed; z-index: 8; right: 24px; bottom: 24px; max-width: min(360px, calc(100vw - 48px)); padding: 13px 16px; border: 1px solid #73867a; background: #1a2522; color: #e9eee4; box-shadow: 0 10px 30px #0008; font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
 
+/* Once play begins, give the Three.js world the entire display. */
+body.game-fullscreen { overflow: hidden; }
+body.game-fullscreen .topbar,
+body.game-fullscreen .feature-foot,
+body.game-fullscreen .game-shelf { display: none; }
+body.game-fullscreen .app-shell { min-height: 0; padding: 0; background: #101716; }
+body.game-fullscreen .arcade-layout { display: block; min-height: 0; margin: 0; padding: 0; }
+body.game-fullscreen .feature { display: block; }
+.scene-wrap.is-playing { position: fixed; z-index: 20; inset: 0; width: 100vw; height: 100vh; height: 100dvh; min-height: 0; border: 0; box-shadow: none; }
+.scene-wrap.is-playing .scene-topline { top: max(20px, env(safe-area-inset-top)); left: max(22px, env(safe-area-inset-left)); right: max(22px, env(safe-area-inset-right)); }
+.scene-wrap.is-playing .hud { padding-top: max(17px, calc(17px + env(safe-area-inset-top))); padding-left: max(20px, calc(20px + env(safe-area-inset-left))); padding-right: max(20px, calc(20px + env(safe-area-inset-right))); }
+.scene-wrap.is-playing .scene-footnote { left: max(22px, env(safe-area-inset-left)); right: max(22px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
+.scene-wrap.is-playing .game-message { max-height: calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
+.scene-wrap.is-playing .touch-controls { bottom: max(53px, calc(53px + env(safe-area-inset-bottom))); }
+
 @media (max-width: 930px) {
   .app-shell { padding: 0 24px; }
   .arcade-layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; }
@@ -201,6 +216,10 @@ h1 em { color: var(--mint); font-style: normal; }
   .controls-note { margin-top: 14px; }
   .shelf-footer { margin-top: 18px; }
   .toast { right: 16px; bottom: 16px; }
+  .scene-wrap.is-playing .scene-topline { top: max(15px, env(safe-area-inset-top)); left: max(15px, env(safe-area-inset-left)); right: max(15px, env(safe-area-inset-right)); }
+  .scene-wrap.is-playing .hud { min-height: 66px; padding: max(12px, calc(12px + env(safe-area-inset-top))) max(12px, calc(12px + env(safe-area-inset-right))) 12px max(12px, calc(12px + env(safe-area-inset-left))); }
+  .scene-wrap.is-playing .scene-footnote { left: max(15px, env(safe-area-inset-left)); right: max(15px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); }
+  .scene-wrap.is-playing .touch-controls { bottom: max(38px, calc(38px + env(safe-area-inset-bottom))); }
 }
 
 @media (max-width: 390px) {
@@ -217,4 +236,3 @@ h1 em { color: var(--mint); font-style: normal; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
-

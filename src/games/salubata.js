@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 
 const LANES = [-1.45, 0, 1.45];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -72,7 +73,7 @@ export class Salubata {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#ffdfbd', '#362d27', 2.15));
+    this.scene.add(new THREE.HemisphereLight('#ffdfbd', '#362d27', 2.05));
     const lamp = new THREE.DirectionalLight('#ffd39a', 2.6);
     lamp.position.set(-4, 9, 5);
     lamp.castShadow = true;
@@ -96,15 +97,16 @@ export class Salubata {
       line.position.set(x, 0.012, -2.5);
       this.scene.add(line);
     }
-    for (let index = 0; index < 10; index += 1) {
-      const stall = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.6 + (index % 3) * 0.35, 1.4), new THREE.MeshStandardMaterial({ color: index % 2 ? '#46352e' : '#34403a', roughness: 0.94 }));
-      const side = index % 2 ? 1 : -1;
-      stall.position.set(side * 5.2, 1.2, -10 + index * 1.8);
-      this.scene.add(stall);
-      const sign = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.32, 0.06), new THREE.MeshStandardMaterial({ color: index % 2 ? '#eb9153' : '#53d1bd', emissive: index % 2 ? '#a74820' : '#157c6d', emissiveIntensity: 1.4 }));
-      sign.position.set(side * 4.25, 1.9, -10 + index * 1.8);
-      this.scene.add(sign);
+    for (let index = 0; index < 6; index += 1) {
+      const z = 1 - index * 3.8;
+      addMarketStall(this.scene, { x: -5.15, z, scale: 0.95, sign: index % 2 ? 'SUYA' : 'LAGOS', accent: '#df7848' });
+      addMarketStall(this.scene, { x: 5.15, z: z - 1.1, scale: 0.93, sign: index % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#168f7e' });
     }
+    addStringLights(this.scene, { start: [-5.2, 4.0, 2], end: [5.2, 4.0, -6], count: 12 });
+    const skyline = makeLabel('LAGOS · STREET PLAY', '#f4d49a');
+    skyline.position.set(0, 5.4, -8.5);
+    skyline.scale.set(5.8, 1.1, 1);
+    this.scene.add(skyline);
 
     this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#59dec5' }));
     this.targetRing.rotation.x = Math.PI / 2;
@@ -354,6 +356,7 @@ export class Salubata {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     this.scene.traverse((object) => {
+      object.userData.disposeTexture?.dispose();
       object.geometry?.dispose();
       if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
       else object.material?.dispose();
