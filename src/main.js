@@ -25,7 +25,7 @@ const games = [
     id: 'salubata',
     title: 'Salubata',
     meta: 'STREET GAME · PLAY NOW',
-    description: 'Throw your slipper behind you to set the mark, then slide it through the rubber bands.',
+    description: 'Pass the phone, throw your slipper behind you, then slide it at the rubber bands. Most bands wins.',
     number: 'C',
     playable: true,
   },
@@ -198,7 +198,7 @@ function selectGame(id) {
   const firstWord = words.shift();
   title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
-  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Take your turn';
+  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Pass the phone';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
     ? 'ARROWS TO MOVE · SPACE TO JUMP'
     : game.id === 'avatar-jump'
@@ -236,8 +236,9 @@ function updateRunUI(state) {
   document.querySelector('#coin-value').textContent = state.coins;
   document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
   document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
-  document.querySelector('#hud-life-label').textContent = isSalubata ? 'TURN' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
-  document.querySelector('#life-value').textContent = isSalubata ? `${state.turn || 1}/${state.maxTurns || 4}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND · PLAYER' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
+  document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1} · P${state.turn || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
   pauseButton.hidden = !['running', 'paused'].includes(state.state);
@@ -265,7 +266,7 @@ function updateRunUI(state) {
   document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS AFTER DARK' : activeGame.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   if (state.phaseText) document.querySelector('.scene-footnote span:first-child').textContent = state.phaseText.toUpperCase();
   else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'THREE LANES. ONE GOOD RUN.';
-  if (state.turn) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
+  if (state.turn && !isSalubata) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
 }
 
 function startRun() {
