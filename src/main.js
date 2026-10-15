@@ -215,6 +215,8 @@ function selectGame(id) {
   document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS AFTER DARK' : game.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   createController();
   renderShelf();
+  // Selecting a title should launch it immediately in the full-viewport game view.
+  startRun();
 }
 
 function createController() {
