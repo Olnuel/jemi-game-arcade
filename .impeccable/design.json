@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "world": "Lagos night-market neon",
+  "tokens": {
+    "ground": "#101716",
+    "surface": "#18211f",
+    "ink": "#f4f0e7",
+    "muted": "#a6aca7",
+    "mint": "#59dec5",
+    "orange": "#f19453",
+    "gold": "#f2cb82",
+    "displayFont": "Manrope",
+    "utilityFont": "DM Mono"
+  },
+  "surface": "Experience",
+  "interaction": "Three-lane runner with eased steering, jump, collect, collision, pause, and restart states"
+}
+
