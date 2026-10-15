@@ -12,7 +12,7 @@ Vite and Three.js, specified in the implementation request.
 
 ## Users
 
-Logged-in Start.ng users who want short, replayable arcade games with their centrally managed player styling represented in-game. Identity platform requirements remain unverified until Start.ng provides its supported session and styling integration contract.
+Logged-in Start.ng users who want short, replayable arcade games with their centrally managed player styling represented in-game. Identity Dash implements the public Start.ng connect example; hosted end-to-end validation remains pending.
 
 ## Product Purpose
 
@@ -24,7 +24,7 @@ The arcade connects three distinct games through a single player character and p
 
 ## Capabilities and Constraints
 
-The initial delivery should include a polished selection screen, a shared character system, and one complete playable game. Start.ng authentication and styling must use verified platform interfaces; no API, SDK, or host contract is present in the repository, and unverified interfaces must not be invented.
+The initial delivery includes a polished selection screen, a shared character system, and one complete playable game. Identity Dash follows the public Start.ng connect example and clearly labels local use as visitor preview. Its hosted identity and styling flow still requires confirmation at a Start.ng game address.
 
 ## Brand Commitments
 
@@ -32,12 +32,11 @@ The visual direction selected for this surface is night-market neon with warm La
 
 ## Evidence on Hand
 
-The starting repository contains only `.gitignore` and a short README. No application code, Start.ng SDK, auth configuration, styling contract, or credentials were present.
+The starting repository contained only `.gitignore` and a short README. The integration added in this branch follows the public Lane Dash example's `start.ng/connect` messaging contract. No hosted end-to-end test has been performed for this arcade.
 
 ## Product Principles
 
-- Preserve platform identity and styling through one shared character system.
+- Preserve Start.ng identity and centrally managed styling through one shared player-character system.
 - Make the first shipped game playable before expanding gameplay across the arcade.
-- Never present placeholder identity as a verified Start.ng session.
+- Never present visitor preview as a verified Start.ng session.
 - Keep each game understandable and playable on keyboard and touch screens.
-
