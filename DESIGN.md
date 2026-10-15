@@ -6,7 +6,7 @@ Experience surface: the arcade should put the playable world in front of the pla
 
 ## Direction contract
 
-**Night market, after dark.** Warm roadside signage, sodium orange, teal shop light, deep painted streets, and modular game typography put a Nigerian night street inside a real Three.js world. The first view pairs that living three-lane street with the Identity Dash run controls and a compact game shelf. The scene switches from atmospheric preview to active run without changing the world. The shared character's appearance is supplied through one normalized style boundary. The platform identity chip always distinguishes a verified session from visitor preview.
+**Night market, after dark.** Warm roadside signage, sodium orange, teal shop light, deep painted streets, and modular game typography put a Nigerian night street inside a real Three.js world. The first view pairs that living three-lane street with the Identity Dash run controls and a compact game shelf. The scene switches from atmospheric preview to active run without changing the world. The shared character's appearance is supplied through one normalized style boundary. The platform identity chip distinguishes a verified session from visitor preview.
 
 Signature interaction: lane changes ease into place while the 3D street moves toward the player; collecting a coin briefly updates the score, while obstacle hits consume one of three attempts.
 
@@ -31,5 +31,4 @@ Signature interaction: lane changes ease into place while the 3D street moves to
 
 ## Interaction and accessibility
 
-Identity Dash supports arrow keys/A-D, Space/up/W to jump, Escape to pause, swipe movement, and labeled touch buttons. Every game selection is a keyboard-operable button. Non-playable titles explain their status. Reduced motion shortens interface transitions. User identity remains explicitly in preview state until a verified Start.ng provider is available.
-
+Identity Dash supports arrow keys/A-D, Space/up/W to jump, Escape to pause, swipe movement, and labeled touch buttons. Every game selection is a keyboard-operable button. Non-playable titles explain their status. Reduced motion shortens interface transitions. The identity chip distinguishes a verified Start.ng profile from local visitor preview; hosted profile sync still needs end-to-end validation.
