@@ -1,0 +1,11 @@
+{
+  "surface": "Start.ng Arcade landing and Identity Dash",
+  "mode": "experience",
+  "buildPath": "code",
+  "firstViewport": "A live Three.js Lagos night street occupies the first view. A warm roadside NIGHT RUN sign, oversized Identity Dash title, single Start running action, compact three-title shelf, and explicit visitor-identity state appear over the scene.",
+  "signatureInteraction": "Identity Dash visibly scrolls a three-lane street toward the player. Arrow keys or swipe shift lanes; Space, Up, W, or the touch button jump; coins update the score; collisions reduce three runs; Escape or the pause control pauses.",
+  "motionGrammar": "Ease lane changes and camera follow; cycle the player's limbs while running; spin coins; use one low-amplitude bounce for jumps; preserve the complete interface for reduced-motion users.",
+  "responsive": "Desktop uses a wide scene with a narrow right game shelf. Mobile stacks the same scene and shelf, keeps large touch controls reachable, and scales HUD text without clipping.",
+  "identityTruth": "No Start.ng API, SDK, session provider, or managed styling schema was present in the repository or verified in available public documentation. Display visitor preview only and leave the adapter unconfigured."
+}
+

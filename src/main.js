@@ -1,0 +1,242 @@
+import './style.css';
+import { IdentityDash } from './games/identity-dash.js';
+import { readStartNgIdentity } from './identity/startng.js';
+import { PREVIEW_STYLE } from './identity/player-character.js';
+
+const games = [
+  {
+    id: 'identity-dash',
+    title: 'Identity Dash',
+    meta: 'ENDLESS RUNNER · PLAY NOW',
+    description: 'Dodge the night traffic, clear road barriers, and scoop up coins on the way.',
+    number: 'A',
+    playable: true,
+  },
+  {
+    id: 'avatar-jump',
+    title: 'Avatar Jump',
+    meta: 'PLATFORMER · IN DEVELOPMENT',
+    description: 'Take your character up a trail of floating platforms and collect the stars.',
+    number: 'B',
+    playable: false,
+  },
+  {
+    id: 'salubata',
+    title: 'Salubata',
+    meta: 'STREET GAME · IN DEVELOPMENT',
+    description: 'A rubber-band street challenge with a slipper, a target, and a little finesse.',
+    number: 'C',
+    playable: false,
+  },
+];
+
+const identity = readStartNgIdentity();
+const app = document.querySelector('#app');
+
+app.innerHTML = `
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Start.ng Arcade home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>START.NG <b>ARCADE</b></span>
+      </a>
+      <div class="topbar-right">
+        <a class="text-link" href="https://start.ng" target="_blank" rel="noreferrer">Start.ng</a>
+        <div class="identity-chip" title="${identity.reason}">
+          <span class="status-dot"></span>
+          <span>VISITOR PREVIEW</span>
+          <span class="profile-avatar" aria-hidden="true">V</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="arcade-layout" id="home">
+      <section class="feature" aria-labelledby="game-title">
+        <div class="scene-wrap" id="scene-wrap">
+          <canvas id="game-canvas" aria-label="Three-dimensional night street runner preview"></canvas>
+          <div class="scene-vignette" aria-hidden="true"></div>
+          <div class="scene-topline"><span class="live-led"></span><span id="scene-caption">LAGOS AFTER DARK</span><span class="scene-rule"></span><span class="scene-index">01 / 03</span></div>
+          <div class="scene-copy" id="scene-copy">
+            <div class="street-sign">NIGHT<br/>RUN</div>
+            <div class="feature-text">
+              <h1 id="game-title">Identity<br/><em>Dash</em></h1>
+              <p id="game-description">Dodge the night traffic, clear road barriers, and scoop up coins on the way.</p>
+              <button class="play-button" id="start-button" type="button">
+                <span>Start running</span><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6 3.8 15 10l-9 6.2z" fill="currentColor"/></svg>
+              </button>
+              <p class="key-hint">ARROWS TO MOVE <span>·</span> SPACE TO JUMP</p>
+            </div>
+          </div>
+          <div class="hud" id="hud" aria-live="polite" hidden>
+            <div class="hud-score"><span>DISTANCE</span><strong id="score-value">000</strong><small>m</small></div>
+            <div class="hud-stat"><span class="coin-mark" aria-hidden="true">₦</span><span id="coin-value">0</span><small>COINS</small></div>
+            <div class="hud-stat life-stat"><span>RUNS</span><strong id="life-value">● ● ●</strong></div>
+          <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
+          </div>
+          <div class="game-message" id="game-message" hidden aria-live="assertive"></div>
+          <div class="touch-controls" aria-label="Touch game controls">
+            <button type="button" data-action="left" aria-label="Move left">←</button>
+            <button type="button" data-action="jump" aria-label="Jump">JUMP</button>
+            <button type="button" data-action="right" aria-label="Move right">→</button>
+          </div>
+          <div class="scene-footnote"><span>THREE LANES. ONE GOOD RUN.</span><span class="footnote-coordinates">06°27′ N &nbsp; 03°24′ E</span></div>
+        </div>
+
+        <div class="feature-foot">
+          <div class="feature-caption"><span class="caption-star">✳</span><span>One character, carried across every game.</span></div>
+          <div class="feature-best"><span>PERSONAL BEST</span><strong id="best-value">000</strong></div>
+        </div>
+      </section>
+
+      <aside class="game-shelf" aria-label="Choose a game">
+        <div class="shelf-heading"><h2>Pick your game</h2><span>03 TITLES</span></div>
+        <nav class="game-list" id="game-list" aria-label="Games"></nav>
+        <div class="profile-panel">
+          <div class="panel-heading"><span>YOUR PLAYER</span><span class="panel-lock" aria-hidden="true">◌</span></div>
+          <div class="player-row">
+            <div class="player-avatar" aria-hidden="true"><span></span></div>
+            <div><strong id="player-name">Visitor</strong><span class="profile-state" id="profile-state">Style preview</span></div>
+            <span class="palette-swatch" aria-hidden="true"></span>
+          </div>
+          <p class="profile-note" id="profile-note">Start.ng profile styling will appear here when its supported connection is available.</p>
+        </div>
+        <div class="controls-note"><span class="keyboard-icon" aria-hidden="true">⌘</span><p>Use the arrow keys and spacebar, or swipe across the road.</p></div>
+        <footer class="shelf-footer"><span>MADE FOR THE PLAYERS</span><span>NG · 001</span></footer>
+      </aside>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+`;
+
+const gameList = document.querySelector('#game-list');
+const title = document.querySelector('#game-title');
+const description = document.querySelector('#game-description');
+const startButton = document.querySelector('#start-button');
+const sceneCopy = document.querySelector('#scene-copy');
+const hud = document.querySelector('#hud');
+const message = document.querySelector('#game-message');
+const pauseButton = document.querySelector('#pause-button');
+const toast = document.querySelector('#toast');
+const canvas = document.querySelector('#game-canvas');
+const sceneWrap = document.querySelector('#scene-wrap');
+let activeGame = games[0];
+let runner;
+let toastTimer;
+let frameState = 'menu';
+
+function renderShelf() {
+  gameList.innerHTML = games.map((game) => `
+    <button class="game-row ${game === activeGame ? 'is-selected' : ''} ${game.playable ? '' : 'is-unavailable'}" type="button" data-game="${game.id}" ${game.playable ? '' : 'aria-disabled="true"'}>
+      <span class="game-letter">${game.number}</span>
+      <span class="game-row-text"><strong>${game.title}</strong><small>${game.meta}</small></span>
+      <span class="game-row-arrow" aria-hidden="true">${game.playable ? '↗' : '· · ·'}</span>
+    </button>
+  `).join('');
+  gameList.querySelectorAll('.game-row').forEach((button) => {
+    button.addEventListener('click', () => selectGame(button.dataset.game));
+  });
+}
+
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('is-visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2800);
+}
+
+function selectGame(id) {
+  const game = games.find((item) => item.id === id);
+  if (!game) return;
+  if (!game.playable) {
+    showToast(`${game.title} is in development. Identity Dash is ready to play.`);
+    return;
+  }
+  if (runner && frameState !== 'menu') {
+    showToast('Finish or return from the current run before switching games.');
+    return;
+  }
+  activeGame = game;
+  title.innerHTML = game.title.replace(' ', '<br/><em>') + '</em>';
+  description.textContent = game.description;
+  renderShelf();
+}
+
+function updateRunUI(state) {
+  frameState = state.state;
+  sceneWrap.classList.toggle('is-playing', state.state !== 'menu');
+  sceneWrap.classList.toggle('is-running', state.state === 'running');
+  document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
+  document.querySelector('#coin-value').textContent = state.coins;
+  document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
+  document.querySelector('#life-value').textContent = `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  hud.hidden = state.state === 'menu';
+  sceneCopy.hidden = state.state !== 'menu';
+  pauseButton.hidden = !['running', 'paused'].includes(state.state);
+  pauseButton.setAttribute('aria-label', state.state === 'paused' ? 'Resume run' : 'Pause run');
+  pauseButton.classList.toggle('is-resume', state.state === 'paused');
+  pauseButton.innerHTML = state.state === 'paused'
+    ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 4.5 8 5.5-8 5.5z" /></svg>'
+    : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg>';
+
+  const labels = {
+    paused: '<strong>Take a breather.</strong><span>Your run is paused.</span><button type="button" data-action="resume">Resume run</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
+    over: `<strong>Good run.</strong><span>${state.score} metres · ${state.coins} coins</span><button type="button" data-action="restart">Run it back</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
+  };
+  if (labels[state.state]) {
+    message.innerHTML = labels[state.state];
+    message.hidden = false;
+    message.querySelector('[data-action="resume"]')?.addEventListener('click', () => runner.resume());
+    message.querySelector('[data-action="restart"]')?.addEventListener('click', () => runner.start());
+    message.querySelector('[data-action="home"]')?.addEventListener('click', returnHome);
+  } else {
+    message.hidden = true;
+    message.innerHTML = '';
+  }
+  document.querySelector('#scene-caption').textContent = state.state === 'running' ? 'RUN IN PROGRESS' : 'LAGOS AFTER DARK';
+}
+
+function startRun() {
+  if (!runner) {
+    try {
+      runner = new IdentityDash(canvas, { style: PREVIEW_STYLE, onChange: updateRunUI });
+    } catch (error) {
+      showToast('This browser could not start the 3D street. Try a browser with WebGL enabled.');
+      console.error(error);
+      return;
+    }
+  }
+  runner.start();
+}
+
+function returnHome() {
+  if (runner) runner.state = 'menu';
+  updateRunUI({ state: 'menu', score: 0, coins: 0, best: runner?.best || 0, lives: 3 });
+}
+
+startButton.addEventListener('click', startRun);
+pauseButton.addEventListener('click', () => {
+  if (runner.state === 'paused') runner.resume();
+  else runner.pause();
+});
+document.querySelectorAll('.touch-controls button').forEach((button) => {
+  button.addEventListener('click', () => {
+    if (!runner) return;
+    if (button.dataset.action === 'jump') runner.jump();
+    else runner.move(button.dataset.action === 'left' ? -1 : 1);
+  });
+});
+renderShelf();
+document.querySelector('#best-value').textContent = String(Number(localStorage.getItem('arcade:identity-dash:best') || 0)).padStart(3, '0');
+if (identity.status !== 'connected') {
+  document.querySelector('#profile-note').title = identity.reason;
+}
+try {
+  runner = new IdentityDash(canvas, { style: PREVIEW_STYLE, onChange: updateRunUI });
+} catch (error) {
+  sceneWrap.classList.add('no-webgl');
+  showToast('This browser could not start the 3D street. Try a browser with WebGL enabled.');
+  console.error(error);
+}
+
+window.addEventListener('pagehide', () => runner?.dispose(), { once: true });
+
