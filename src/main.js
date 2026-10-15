@@ -1,4 +1,6 @@
 import { IdentityDash } from './games/identity-dash.js';
+import { AvatarJump } from './games/avatar-jump.js';
+import { Salubata } from './games/salubata.js';
 import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, START_NG, startNgSignIn } from './identity/startng.js';
 import { PREVIEW_STYLE } from './identity/player-character.js';
 
@@ -14,18 +16,18 @@ const games = [
   {
     id: 'avatar-jump',
     title: 'Avatar Jump',
-    meta: 'PLATFORMER · IN DEVELOPMENT',
-    description: 'Take your character up a trail of floating platforms and collect the stars.',
+    meta: 'PLATFORMER · PLAY NOW',
+    description: 'Jump across the lantern platforms, collect the stars, and reach the rooftop finish.',
     number: 'B',
-    playable: false,
+    playable: true,
   },
   {
     id: 'salubata',
     title: 'Salubata',
-    meta: 'STREET GAME · IN DEVELOPMENT',
-    description: 'A rubber-band street challenge with a slipper, a target, and a little finesse.',
+    meta: 'STREET GAME · PLAY NOW',
+    description: 'Throw your slipper behind you to set the mark, then slide it through the rubber bands.',
     number: 'C',
-    playable: false,
+    playable: true,
   },
 ];
 
@@ -66,9 +68,9 @@ app.innerHTML = `
             </div>
           </div>
           <div class="hud" id="hud" aria-live="polite" hidden>
-            <div class="hud-score"><span>DISTANCE</span><strong id="score-value">000</strong><small>m</small></div>
-            <div class="hud-stat"><span class="coin-mark" aria-hidden="true">₦</span><span id="coin-value">0</span><small>COINS</small></div>
-            <div class="hud-stat life-stat"><span>RUNS</span><strong id="life-value">● ● ●</strong></div>
+            <div class="hud-score"><span id="hud-score-label">DISTANCE</span><strong id="score-value">000</strong><small id="score-unit">m</small></div>
+            <div class="hud-stat"><span class="coin-mark" aria-hidden="true">₦</span><span id="coin-value">0</span><small id="collectible-label">COINS</small></div>
+            <div class="hud-stat life-stat"><span id="hud-life-label">RUNS</span><strong id="life-value">● ● ●</strong></div>
           <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
           </div>
           <div class="game-message" id="game-message" hidden aria-live="assertive"></div>
@@ -118,7 +120,7 @@ const toast = document.querySelector('#toast');
 const canvas = document.querySelector('#game-canvas');
 const sceneWrap = document.querySelector('#scene-wrap');
 let activeGame = games[0];
-let runner;
+let controller;
 let toastTimer;
 let frameState = 'menu';
 let currentUser = null;
@@ -127,7 +129,7 @@ let currentStyle = PREVIEW_STYLE;
 function applyIdentity(user) {
   currentUser = user;
   currentStyle = user ? mapStartNgStyle(user) : PREVIEW_STYLE;
-  runner?.setStyle(currentStyle);
+  controller?.setStyle(currentStyle);
 
   const name = currentStyle.name;
   const profileName = document.querySelector('#player-name');
@@ -142,7 +144,7 @@ function applyIdentity(user) {
   profileName.textContent = name;
   profileState.textContent = user ? 'Start.ng profile · synced' : START_NG ? 'Guest player' : 'Style preview';
   profileNote.textContent = user
-    ? 'Your saved Start.ng character is active in Identity Dash.'
+    ? `Your saved Start.ng character is active in ${activeGame.title}.`
     : START_NG
       ? 'Sign in with Start.ng to bring your saved character into the run.'
       : 'Your Start.ng character appears here when this game is hosted on its Start.ng address.';
@@ -165,7 +167,7 @@ function handleIdentityLink(event) {
 
 function renderShelf() {
   gameList.innerHTML = games.map((game) => `
-    <button class="game-row ${game === activeGame ? 'is-selected' : ''} ${game.playable ? '' : 'is-unavailable'}" type="button" data-game="${game.id}" ${game.playable ? '' : 'aria-disabled="true"'}>
+    <button class="game-row ${game === activeGame ? 'is-selected' : ''} ${game.playable ? '' : 'is-unavailable'}" type="button" data-game="${game.id}">
       <span class="game-letter">${game.number}</span>
       <span class="game-row-text"><strong>${game.title}</strong><small>${game.meta}</small></span>
       <span class="game-row-arrow" aria-hidden="true">${game.playable ? '↗' : '· · ·'}</span>
@@ -186,28 +188,53 @@ function showToast(text) {
 function selectGame(id) {
   const game = games.find((item) => item.id === id);
   if (!game) return;
-  if (!game.playable) {
-    showToast(`${game.title} is in development. Identity Dash is ready to play.`);
-    return;
-  }
-  if (runner && frameState !== 'menu') {
+  if (controller && frameState !== 'menu') {
     showToast('Finish or return from the current run before switching games.');
     return;
   }
+  controller?.dispose();
   activeGame = game;
-  title.innerHTML = game.title.replace(' ', '<br/><em>') + '</em>';
+  const words = game.title.split(' ');
+  const firstWord = words.shift();
+  title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
+  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Take your turn';
+  document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
+    ? 'ARROWS TO MOVE · SPACE TO JUMP'
+    : game.id === 'avatar-jump'
+      ? 'LEFT / RIGHT TO MOVE · SPACE TO JUMP'
+      : 'HOLD ↓ TO THROW BACK · ← / → TO AIM · SPACE TO SLIDE';
+  document.querySelector('.controls-note p').textContent = game.id === 'identity-dash'
+    ? 'Use the arrow keys and spacebar, or swipe across the road.'
+    : game.id === 'avatar-jump'
+      ? 'Use left and right to steer, then jump between the floating platforms.'
+      : 'Set your back throw, then aim and charge the slipper slide.';
+  const touchButtons = [...document.querySelectorAll('.touch-controls button')];
+  touchButtons[1].textContent = game.id === 'salubata' ? 'THROW' : 'JUMP';
+  touchButtons[1].dataset.action = game.id === 'salubata' ? 'throw' : 'jump';
+  document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS AFTER DARK' : game.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
+  createController();
   renderShelf();
+}
+
+function createController() {
+  const Game = { 'identity-dash': IdentityDash, 'avatar-jump': AvatarJump, salubata: Salubata }[activeGame.id];
+  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI });
 }
 
 function updateRunUI(state) {
   frameState = state.state;
   sceneWrap.classList.toggle('is-playing', state.state !== 'menu');
   sceneWrap.classList.toggle('is-running', state.state === 'running');
-  document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
+  const isSalubata = activeGame.id === 'salubata';
+  document.querySelector('#hud-score-label').textContent = activeGame.id === 'avatar-jump' ? 'CLIMB SCORE' : isSalubata ? 'POINTS' : 'DISTANCE';
+  document.querySelector('#score-unit').textContent = activeGame.id === 'avatar-jump' ? 'pts' : isSalubata ? 'pts' : 'm';
+  document.querySelector('#collectible-label').textContent = activeGame.id === 'avatar-jump' ? 'STARS' : isSalubata ? 'BANDS' : 'COINS';
   document.querySelector('#coin-value').textContent = state.coins;
+  document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
   document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
-  document.querySelector('#life-value').textContent = `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  document.querySelector('#hud-life-label').textContent = isSalubata ? 'TURN' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
+  document.querySelector('#life-value').textContent = isSalubata ? `${state.turn || 1}/${state.maxTurns || 4}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
   pauseButton.hidden = !['running', 'paused'].includes(state.state);
@@ -218,57 +245,69 @@ function updateRunUI(state) {
     : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg>';
 
   const labels = {
-    paused: '<strong>Take a breather.</strong><span>Your run is paused.</span><button type="button" data-action="resume">Resume run</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
-    over: `<strong>Good run.</strong><span>${state.score} metres · ${state.coins} coins</span><button type="button" data-action="restart">Run it back</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
+    paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
+    over: `<strong>${state.resultTitle || 'Good game.'}</strong><span>${state.resultBody || `${state.score} metres · ${state.coins} coins`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
+    won: `<strong>${state.resultTitle || 'You made it.'}</strong><span>${state.resultBody || `${state.score} points`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
   };
   if (labels[state.state]) {
     message.innerHTML = labels[state.state];
     message.hidden = false;
-    message.querySelector('[data-action="resume"]')?.addEventListener('click', () => runner.resume());
-    message.querySelector('[data-action="restart"]')?.addEventListener('click', () => runner.start());
+    message.querySelector('[data-action="resume"]')?.addEventListener('click', () => controller.resume());
+    message.querySelector('[data-action="restart"]')?.addEventListener('click', () => controller.start());
     message.querySelector('[data-action="home"]')?.addEventListener('click', returnHome);
   } else {
     message.hidden = true;
     message.innerHTML = '';
   }
-  document.querySelector('#scene-caption').textContent = state.state === 'running' ? 'RUN IN PROGRESS' : 'LAGOS AFTER DARK';
+  document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS AFTER DARK' : activeGame.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
+  if (state.phaseText) document.querySelector('.scene-footnote span:first-child').textContent = state.phaseText.toUpperCase();
+  else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'THREE LANES. ONE GOOD RUN.';
+  if (state.turn) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
 }
 
 function startRun() {
-  if (!runner) {
-    try {
-      runner = new IdentityDash(canvas, { style: currentStyle, onChange: updateRunUI });
-    } catch (error) {
-      showToast('This browser could not start the 3D street. Try a browser with WebGL enabled.');
-      console.error(error);
-      return;
-    }
+  try {
+    controller.start();
+  } catch (error) {
+    showToast('This browser could not start the 3D game. Try a browser with WebGL enabled.');
+    console.error(error);
   }
-  runner.start();
 }
 
 function returnHome() {
-  if (runner) runner.state = 'menu';
-  updateRunUI({ state: 'menu', score: 0, coins: 0, best: runner?.best || 0, lives: 3 });
+  if (controller) controller.state = 'menu';
+  updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
 startButton.addEventListener('click', startRun);
 pauseButton.addEventListener('click', () => {
-  if (runner.state === 'paused') runner.resume();
-  else runner.pause();
+  if (controller.state === 'paused') controller.resume();
+  else controller.pause();
 });
 document.querySelectorAll('.touch-controls button').forEach((button) => {
+  if (button.dataset.action === 'jump') {
+    button.addEventListener('pointerdown', (event) => {
+      if (activeGame.id === 'salubata') controller?.beginCharge(event.timeStamp);
+    });
+    button.addEventListener('pointerup', (event) => {
+      if (activeGame.id === 'salubata') controller?.releaseCharge(event.timeStamp);
+    });
+    button.addEventListener('pointercancel', (event) => {
+      if (activeGame.id === 'salubata') controller?.releaseCharge(event.timeStamp);
+    });
+  }
   button.addEventListener('click', () => {
-    if (!runner) return;
-    if (button.dataset.action === 'jump') runner.jump();
-    else runner.move(button.dataset.action === 'left' ? -1 : 1);
+    if (!controller) return;
+    if (button.dataset.action === 'jump') controller.jump();
+    else if (button.dataset.action === 'throw') controller.throwAction();
+    else controller.move(button.dataset.action === 'left' ? -1 : 1);
   });
 });
 renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
 document.querySelector('#best-value').textContent = String(Number(localStorage.getItem('arcade:identity-dash:best') || 0)).padStart(3, '0');
 try {
-  runner = new IdentityDash(canvas, { style: currentStyle, onChange: updateRunUI });
+  createController();
 } catch (error) {
   sceneWrap.classList.add('no-webgl');
   showToast('This browser could not start the 3D street. Try a browser with WebGL enabled.');
@@ -285,5 +324,4 @@ readStartNgIdentity().then((identity) => {
 });
 onStartNgUserChange(applyIdentity);
 
-window.addEventListener('pagehide', () => runner?.dispose(), { once: true });
-
+window.addEventListener('pagehide', () => controller?.dispose(), { once: true });
