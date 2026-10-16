@@ -359,6 +359,31 @@ function buildCharacter(character, styleInput) {
   return human;
 }
 
+const BODY_OPTIONS = [
+  { id: 'female', label: 'Feminine' },
+  { id: 'male', label: 'Masculine' },
+];
+const BODY_KEY = 'arcade:body';
+
+export function bodyOptions() { return BODY_OPTIONS; }
+
+/** The player's own body choice, or null when they are using their Start.ng look as-is. */
+export function readBodyOverride() {
+  try {
+    const saved = localStorage.getItem(BODY_KEY);
+    if (saved && BODY_OPTIONS.some((option) => option.id === saved)) return saved;
+  } catch { /* storage may be unavailable */ }
+  return null;
+}
+
+export function writeBodyOverride(id) {
+  if (id !== null && !BODY_OPTIONS.some((option) => option.id === id)) return;
+  try {
+    if (id === null) localStorage.removeItem(BODY_KEY);
+    else localStorage.setItem(BODY_KEY, id);
+  } catch { /* storage may be unavailable */ }
+}
+
 export function createPlayerCharacter(styleInput = PREVIEW_STYLE) {
   const character = new THREE.Group();
   buildCharacter(character, styleInput);

@@ -309,3 +309,11 @@ body.game-fullscreen .feature { display: block; }
 .lighting-swatch--daylight { background: linear-gradient(180deg, #2f7fd0 0%, #6fb3e8 52%, #ffeccb 100%); }
 .lighting-swatch--evening { background: linear-gradient(180deg, #2b1b4d 0%, #a8474f 52%, #ffc247 100%); }
 .lighting-swatch--night { background: linear-gradient(180deg, #080b1c 0%, #232b4e 55%, #4a5478 100%); }
+
+/* Character body picker */
+.body-panel { margin-top: 18px; padding: 14px 0 12px; border-top: 1px solid var(--line); }
+.body-panel .panel-heading span:last-child { color: var(--dim); text-transform: none; letter-spacing: .04em; }
+.body-options { margin-top: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.body-option { padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px; background: #2a171d; color: var(--muted); font: 10px var(--mono); letter-spacing: .04em; cursor: pointer; transition: border-color .16s ease, background .16s ease, color .16s ease; }
+.body-option:hover { border-color: var(--green); color: var(--ink); }
+.body-option[aria-pressed='true'] { border-color: var(--green); background: #10301f; color: #7ef0b4; }

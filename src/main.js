@@ -3,7 +3,7 @@ import { IdentityDash } from './games/identity-dash.js';
 import { AvatarJump } from './games/avatar-jump.js';
 import { Salubata } from './games/salubata.js';
 import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, saveStartNgScore, readStartNgLeaderboard, START_NG, startNgSignIn } from './identity/startng.js';
-import { PREVIEW_STYLE } from './identity/player-character.js';
+import { PREVIEW_STYLE, bodyOptions, readBodyOverride, writeBodyOverride } from './identity/player-character.js';
 import { lightPresets, readLighting, writeLighting } from './scene/sky.js';
 
 const games = [
@@ -107,6 +107,10 @@ app.innerHTML = `
           </div>
           <p class="profile-note" id="profile-note">${START_NG ? 'Checking your centrally managed Start.ng character…' : 'Your Start.ng character styling appears when the game is hosted on your Start.ng address.'}</p>
         </div>
+        <div class="body-panel">
+          <div class="panel-heading"><span>CHARACTER BODY</span><span id="body-hint">Your Start.ng look</span></div>
+          <div class="body-options" id="body-options" role="group" aria-label="Character body"></div>
+        </div>
         <div class="lighting-panel">
           <div class="panel-heading"><span>TIME OF DAY</span><span id="lighting-hint">Lagos dusk</span></div>
           <div class="lighting-options" id="lighting-options" role="group" aria-label="Time of day"></div>
@@ -143,6 +147,34 @@ let currentStyle = PREVIEW_STYLE;
 let lastPauseState = null;
 let scoreSent = false;
 let playerSignedIn = false;
+let platformStyle = PREVIEW_STYLE;
+let bodyOverride = readBodyOverride();
+
+// The player's own body choice wins over the account's, so they can play as they
+// like without changing the rest of the colours Start.ng manages for them.
+function resolveStyle() {
+  const base = platformStyle || PREVIEW_STYLE;
+  return bodyOverride ? { ...base, body: bodyOverride } : base;
+}
+
+function setBody(id) {
+  bodyOverride = id;
+  writeBodyOverride(id);
+  currentStyle = resolveStyle();
+  controller?.setStyle(currentStyle);
+  renderBodyOptions(id);
+}
+
+function renderBodyOptions(selected = bodyOverride) {
+  const host = document.querySelector('#body-options');
+  if (!host) return;
+  host.innerHTML = bodyOptions()
+    .map((option) => `<button type="button" class="body-option" data-body="${option.id}" aria-pressed="${option.id === selected}">${option.label}</button>`)
+    .join('');
+  document.querySelector('#body-hint').textContent = selected
+    ? 'Your choice, remembered here'
+    : 'Following your Start.ng look';
+}
 
 // Pushes a finished run to the shared start.ng leaderboard. Only signed-in players
 // can save; guests and local previews quietly skip it.
@@ -184,7 +216,8 @@ async function refreshLeaderboard() {
 
 function applyIdentity(user, signedIn = true) {
   currentUser = user;
-  currentStyle = (user && mapStartNgStyle(user)) || PREVIEW_STYLE;
+  platformStyle = (user && mapStartNgStyle(user)) || PREVIEW_STYLE;
+  currentStyle = resolveStyle();
   controller?.setStyle(currentStyle);
 
   const isGuest = Boolean(user) && !signedIn;
@@ -413,6 +446,14 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
 renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
 renderLightingOptions();
+renderBodyOptions();
+document.querySelector('#body-options').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-body]');
+  if (!button) return;
+  const next = button.dataset.body;
+  // Clicking the active option clears the override and goes back to the Start.ng look.
+  setBody(next === bodyOverride ? null : next);
+});
 document.querySelector('#lighting-options').addEventListener('click', (event) => {
   const button = event.target.closest('[data-light]');
   if (button) setLighting(button.dataset.light);

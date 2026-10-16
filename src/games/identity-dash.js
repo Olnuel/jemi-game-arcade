@@ -240,6 +240,8 @@ export class IdentityDash {
     addStringLights(this.scene, { start: [-4.5, 4.8, 1], end: [4.5, 4.8, -10], count: 12 });
     this.character = createPlayerCharacter(style);
     this.character.position.set(0, FOOT_Y, 2.15);
+    // The runner heads away from the camera toward the coins, so face it down the road.
+    this.character.rotation.y = Math.PI;
     this.scene.add(this.character);
     this.playerShadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.5, 24),
