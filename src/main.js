@@ -61,16 +61,6 @@ app.innerHTML = `
             <div class="feature-text">
               <h1 id="game-title">Identity<br/><em>Dash</em></h1>
               <p id="game-description">Dodge the night traffic, clear road barriers, and scoop up coins on the way.</p>
-              <div class="player-count-picker" id="player-count-picker" hidden aria-label="Choose number of Salubata players">
-                <span class="player-count-label">PLAYERS IN THIS MATCH</span>
-                <div class="player-count-options">
-                  <button type="button" data-player-count="1" aria-pressed="false">1 Player</button>
-                  <button type="button" data-player-count="2" aria-pressed="true">2 Players</button>
-                  <button type="button" data-player-count="3" aria-pressed="false">3 Players</button>
-                  <button type="button" data-player-count="4" aria-pressed="false">4 Players</button>
-                </div>
-                <p>Play together on the same screen. Turns switch automatically.</p>
-              </div>
               <button class="play-button" id="start-button" type="button">
                 <span>Start running</span><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6 3.8 15 10l-9 6.2z" fill="currentColor"/></svg>
               </button>
@@ -135,7 +125,6 @@ let toastTimer;
 let frameState = 'menu';
 let currentUser = null;
 let currentStyle = PREVIEW_STYLE;
-let salubataPlayerCount = 2;
 
 function applyIdentity(user) {
   currentUser = user;
@@ -209,8 +198,7 @@ function selectGame(id) {
   const firstWord = words.shift();
   title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
-  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Start match';
-  document.querySelector('#player-count-picker').hidden = game.id !== 'salubata';
+  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Pass the phone';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
     ? 'ARROWS TO MOVE · SPACE TO JUMP'
     : game.id === 'avatar-jump'
@@ -227,13 +215,13 @@ function selectGame(id) {
   document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS AFTER DARK' : game.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   createController();
   renderShelf();
-  // Salubata offers a player-count choice before starting; other games launch immediately.
-  if (game.id !== 'salubata') startRun();
+  // Selecting a title should launch it immediately in the full-viewport game view.
+  startRun();
 }
 
 function createController() {
   const Game = { 'identity-dash': IdentityDash, 'avatar-jump': AvatarJump, salubata: Salubata }[activeGame.id];
-  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI, playerCount: activeGame.id === 'salubata' ? salubataPlayerCount : 1 });
+  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI });
 }
 
 function updateRunUI(state) {
@@ -262,6 +250,7 @@ function updateRunUI(state) {
 
   const labels = {
     paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
+    handoff: `<strong>Pass the phone to Player ${state.turn || 2}</strong><span>${state.phaseLabel || 'Next player up'} · ${state.resultBody || ''}</span><button type="button" data-action="continue">Ready, Player ${state.turn || 2}</button>`,
     over: `<strong>${state.resultTitle || 'Good game.'}</strong><span>${state.resultBody || `${state.score} metres · ${state.coins} coins`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
     won: `<strong>${state.resultTitle || 'You made it.'}</strong><span>${state.resultBody || `${state.score} points`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
   };
@@ -269,6 +258,7 @@ function updateRunUI(state) {
     message.innerHTML = labels[state.state];
     message.hidden = false;
     message.querySelector('[data-action="resume"]')?.addEventListener('click', () => controller.resume());
+    message.querySelector('[data-action="continue"]')?.addEventListener('click', () => controller.continueTurn());
     message.querySelector('[data-action="restart"]')?.addEventListener('click', () => controller.start());
     message.querySelector('[data-action="home"]')?.addEventListener('click', returnHome);
   } else {
@@ -283,10 +273,6 @@ function updateRunUI(state) {
 
 function startRun() {
   try {
-    if (activeGame.id === 'salubata') {
-      controller.setPlayerCount(salubataPlayerCount);
-      document.querySelector('#player-count-picker').hidden = true;
-    }
     controller.start();
   } catch (error) {
     showToast('This browser could not start the 3D game. Try a browser with WebGL enabled.');
@@ -299,16 +285,6 @@ function returnHome() {
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
-document.querySelectorAll('[data-player-count]').forEach((button) => {
-  button.addEventListener('click', () => {
-    salubataPlayerCount = Number(button.dataset.playerCount);
-    document.querySelectorAll('[data-player-count]').forEach((option) => {
-      const selected = option === button;
-      option.classList.toggle('is-selected', selected);
-      option.setAttribute('aria-pressed', String(selected));
-    });
-  });
-});
 startButton.addEventListener('click', startRun);
 pauseButton.addEventListener('click', () => {
   if (controller.state === 'paused') controller.resume();
@@ -330,6 +306,7 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
     if (!controller) return;
     if (button.dataset.action === 'jump') controller.jump();
     else if (button.dataset.action === 'throw') controller.throwAction();
+    else if (button.dataset.action === 'continue') controller.continueTurn?.();
     else controller.move(button.dataset.action === 'left' ? -1 : 1);
   });
 });

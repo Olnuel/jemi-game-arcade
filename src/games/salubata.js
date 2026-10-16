@@ -373,7 +373,9 @@ export class Salubata {
   notify() {
     const names = { 'backward-aim': 'Back throw', 'backward-flight': 'Throw airborne', 'slide-aim': 'Aim ground slide', sliding: 'Slipper sliding', 'turn-end': 'Turn complete' };
     const player = this.players[this.playerIndex];
-    const leader = this.players[0].bands === this.players[1].bands ? null : this.players[0].bands > this.players[1].bands ? this.players[0] : this.players[1];
+    const highestBandCount = Math.max(...this.players.map((entry) => entry.bands));
+    const leaders = this.players.filter((entry) => entry.bands === highestBandCount);
+    const leader = leaders.length === 1 ? leaders[0] : null;
     const label = this.state === 'won' ? 'Circle cleared' : `${player.name} · ${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
     const playerScores = this.players.map((entry, index) => `P${index + 1} ${entry.bands}`).join(' · ');
     const instructions = this.phase === 'backward-aim'
@@ -401,7 +403,7 @@ export class Salubata {
       phaseLabel: label,
       phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : instructions,
       resultTitle: this.state === 'won' ? (leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
-      resultBody: `${this.players[0].name}: ${this.players[0].bands} bands · ${this.players[1].name}: ${this.players[1].bands} bands`,
+      resultBody: this.players.map((entry) => `${entry.name}: ${entry.bands} bands`).join(' · '),
       resultAction: 'Play another match',
     });
   }
