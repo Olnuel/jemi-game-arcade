@@ -129,10 +129,10 @@ let lastPauseState = null;
 
 function applyIdentity(user) {
   currentUser = user;
-  currentStyle = user ? mapStartNgStyle(user) : PREVIEW_STYLE;
+  currentStyle = (user && mapStartNgStyle(user)) || PREVIEW_STYLE;
   controller?.setStyle(currentStyle);
 
-  const name = currentStyle.name;
+  const name = currentStyle.name || PREVIEW_STYLE.name;
   const profileName = document.querySelector('#player-name');
   const profileState = document.querySelector('#profile-state');
   const profileNote = document.querySelector('#profile-note');
@@ -154,10 +154,10 @@ function applyIdentity(user) {
   identityDot.classList.toggle('is-checking', !user && START_NG);
   headerAvatar.textContent = name.slice(0, 1).toUpperCase();
   identityLink.title = user ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
-  panel.style.setProperty('--character-skin', currentStyle.skinColor);
-  panel.style.setProperty('--character-hair', currentStyle.hairColor);
-  panel.style.setProperty('--character-top', currentStyle.primaryColor);
-  panel.style.setProperty('--character-bottoms', currentStyle.secondaryColor);
+  panel.style.setProperty('--character-skin', currentStyle.skinColor || PREVIEW_STYLE.skinColor);
+  panel.style.setProperty('--character-hair', currentStyle.hairColor || PREVIEW_STYLE.hairColor);
+  panel.style.setProperty('--character-top', currentStyle.primaryColor || PREVIEW_STYLE.primaryColor);
+  panel.style.setProperty('--character-bottoms', currentStyle.secondaryColor || PREVIEW_STYLE.secondaryColor);
 }
 
 function handleIdentityLink(event) {
@@ -324,7 +324,9 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
 });
 renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
-document.querySelector('#best-value').textContent = String(Number(localStorage.getItem('arcade:identity-dash:best') || 0)).padStart(3, '0');
+let initialBest = 0;
+try { initialBest = Number(localStorage.getItem('arcade:identity-dash:best') || 0); } catch {}
+document.querySelector('#best-value').textContent = String(Number.isFinite(initialBest) ? initialBest : 0).padStart(3, '0');
 try {
   createController();
 } catch (error) {

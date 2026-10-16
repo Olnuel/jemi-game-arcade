@@ -13,7 +13,9 @@ export class IdentityDash {
     this.state = 'menu';
     this.score = 0;
     this.coins = 0;
-    this.best = Number(localStorage.getItem('arcade:identity-dash:best') || 0);
+    let savedBest = 0;
+    try { savedBest = Number(localStorage.getItem('arcade:identity-dash:best') || 0); } catch {}
+    this.best = Number.isFinite(savedBest) ? savedBest : 0;
     this.lives = 3;
     this.lane = 1;
     this.targetLane = 1;
@@ -330,7 +332,7 @@ export class IdentityDash {
     if (this.lives <= 0) {
       this.state = 'over';
       this.best = Math.max(this.best, Math.floor(this.score));
-      localStorage.setItem('arcade:identity-dash:best', String(this.best));
+      try { localStorage.setItem('arcade:identity-dash:best', String(this.best)); } catch {}
     }
     this.notify();
   }
