@@ -8,23 +8,23 @@ const games = [
   {
     id: 'identity-dash',
     title: 'Identity Dash',
-    meta: 'ENDLESS RUNNER · PLAY NOW',
-    description: 'Dodge the night traffic, clear road barriers, and scoop up coins on the way.',
+    meta: 'DANFO RUN · PLAY NOW',
+    description: 'Take on the bright Lagos streets, dodge traffic, leap over barriers, and collect coins.',
     number: 'A',
     playable: true,
   },
   {
     id: 'avatar-jump',
     title: 'Avatar Jump',
-    meta: 'PLATFORMER · PLAY NOW',
-    description: 'Jump across the lantern platforms, collect the stars, and reach the rooftop finish.',
+    meta: 'ROOFTOP PLATFORMER · PLAY NOW',
+    description: 'Leap between colourful Lagos rooftops, grab shining stars, and reach the final terrace.',
     number: 'B',
     playable: true,
   },
   {
     id: 'salubata',
     title: 'Salubata',
-    meta: 'STREET GAME · PLAY NOW',
+    meta: 'NAIJA STREET CLASSIC · PLAY NOW',
     description: 'Take your best shot at the rubber-band circle. Master the backward throw, line up your slipper, and clear every band to win.',
     number: 'C',
     playable: true,
@@ -212,7 +212,7 @@ function selectGame(id) {
   const touchButtons = [...document.querySelectorAll('.touch-controls button')];
   touchButtons[1].textContent = game.id === 'salubata' ? 'THROW' : 'JUMP';
   touchButtons[1].dataset.action = game.id === 'salubata' ? 'throw' : 'jump';
-  document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS AFTER DARK' : game.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
+  document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS IN FULL COLOUR' : game.id === 'avatar-jump' ? 'ROOFTOPS OVER LAGOS' : 'SALUBATA STREET PARTY';
   createController();
   renderShelf();
   // Salubata waits on the menu until the player starts a solo run.
@@ -263,9 +263,9 @@ function updateRunUI(state) {
     message.hidden = true;
     message.innerHTML = '';
   }
-  document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS AFTER DARK' : activeGame.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
+  document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS IN FULL COLOUR' : activeGame.id === 'avatar-jump' ? 'ROOFTOPS OVER LAGOS' : 'SALUBATA STREET PARTY';
   if (state.phaseText) document.querySelector('.scene-footnote span:first-child').textContent = state.phaseText.toUpperCase();
-  else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'THREE LANES. ONE GOOD RUN.';
+  else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'LAGOS IS CALLING. LET’S MOVE!';
   if (state.turn && !isSalubata) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
 }
 
