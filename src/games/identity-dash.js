@@ -157,8 +157,8 @@ export class IdentityDash {
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#74c8f3');
-    this.scene.fog = new THREE.FogExp2('#9adcf5', 0.012);
+    this.scene.background = new THREE.Color('#47c7f4');
+    this.scene.fog = new THREE.FogExp2('#bcefff', 0.009);
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
@@ -168,7 +168,7 @@ export class IdentityDash {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.3;
 
     this.buildScene(style);
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -186,9 +186,9 @@ export class IdentityDash {
   }
 
   buildScene(style) {
-    const ambient = new THREE.HemisphereLight('#fff5d7', '#568a52', 2.7);
+    const ambient = new THREE.HemisphereLight('#fff9d8', '#7abf64', 3.1);
     this.scene.add(ambient);
-    const moon = new THREE.DirectionalLight('#fff2c4', 3.0);
+    const moon = new THREE.DirectionalLight('#fff4c5', 3.8);
     moon.position.set(-4, 8, 5);
     moon.castShadow = true;
     moon.shadow.mapSize.set(1024, 1024);
@@ -202,7 +202,7 @@ export class IdentityDash {
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(80, 90),
-      new THREE.MeshStandardMaterial({ color: '#b8a07c', roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: '#e6c77b', roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.06, -29);
@@ -211,7 +211,7 @@ export class IdentityDash {
 
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(5.9, 90),
-      new THREE.MeshStandardMaterial({ color: '#3a4247', roughness: 0.86 }),
+      new THREE.MeshStandardMaterial({ color: '#505d68', roughness: 0.86 }),
     );
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, -0.025, -29);
@@ -249,7 +249,7 @@ export class IdentityDash {
   }
 
   createStreet() {
-    const buildingMats = ['#d76b43', '#247f82', '#e6ad39', '#527b4b', '#5c83bd'].map((color) =>
+    const buildingMats = ['#ff6b35', '#00a878', '#ffca05', '#6dbd45', '#28a9e0', '#ed5a8c'].map((color) =>
       new THREE.MeshStandardMaterial({ color, roughness: 0.95 }),
     );
     const windowMats = [
@@ -286,8 +286,8 @@ export class IdentityDash {
 
     for (let row = 0; row < 5; row += 1) {
       const z = -5 - row * 14;
-      addMarketStall(this.scene, { x: -4.55, z, scale: 0.82, sign: row % 2 ? 'SUYA' : 'LAGOS', accent: '#ff783d' });
-      addMarketStall(this.scene, { x: 4.55, z: z - 4, scale: 0.82, sign: row % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#24b98a' });
+      addMarketStall(this.scene, { x: -4.55, z, scale: 0.82, sign: row % 2 ? 'SUYA' : 'LAGOS', accent: '#ffca05' });
+      addMarketStall(this.scene, { x: 4.55, z: z - 4, scale: 0.82, sign: row % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#ff6238' });
     }
 
     for (const side of [-1, 1]) {
