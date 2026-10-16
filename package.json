@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "node --check src/main.js && node --check src/games/identity-dash.js && node --check src/games/avatar-jump.js && node --check src/games/salubata.js && node --check src/identity/player-character.js && node --check src/identity/startng.js"
+    "check": "node --check src/main.js && node --check src/games/identity-dash.js && node --check src/games/avatar-jump.js && node --check src/games/salubata.js && node --check src/identity/player-character.js && node --check src/identity/startng.js && node --check src/audio/sound.js"
   },
   "dependencies": {
     "three": "^0.186.1"

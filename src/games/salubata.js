@@ -1,3 +1,4 @@
+import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
@@ -195,8 +196,13 @@ export class Salubata {
     const elapsed = Math.max(0.12, (timeStamp - this.throwStart) / 1000);
     const power = clamp(elapsed / 1.15, 0.12, 1);
     this.throwStart = null;
-    if (this.phase === 'backward-aim') this.throwBackward(power);
-    else if (this.phase === 'slide-aim') this.throwSlide(power);
+    if (this.phase === 'backward-aim') {
+      sound.playJump();
+      this.throwBackward(power);
+    } else if (this.phase === 'slide-aim') {
+      sound.playJump();
+      this.throwSlide(power);
+    }
   }
 
   throwAction() {
@@ -306,6 +312,7 @@ export class Salubata {
     this.phase = 'turn-end';
     if (this.removed === this.bands.length) {
       this.state = 'won';
+      sound.playStart();
       this.notify();
       return;
     }
@@ -357,6 +364,7 @@ export class Salubata {
           band.mesh.geometry.dispose();
           band.mesh.material.dispose();
           this.removed += 1;
+          sound.playCoin();
           const player = this.players[this.playerIndex];
           player.bands += 1;
           player.score += 100;

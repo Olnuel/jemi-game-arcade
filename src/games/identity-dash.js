@@ -1,10 +1,137 @@
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights } from '../scene/lagos-night-market.js';
+import { sound } from '../audio/sound.js';
 
 const LANES = [-1.55, 0, 1.55];
 const randomLane = () => Math.floor(Math.random() * LANES.length);
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function createDanfoBus() {
+  const bus = new THREE.Group();
+
+  // Iconic Lagos Danfo minibus: vibrant yellow body
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: '#fab81e',
+    roughness: 0.45,
+    metalness: 0.15,
+  });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.18, 1.12, 2.25), bodyMat);
+  body.position.y = 0.7;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  bus.add(body);
+
+  // Iconic twin black horizontal stripes
+  const stripeMat = new THREE.MeshStandardMaterial({ color: '#161819', roughness: 0.8 });
+  const topStripe = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.085, 2.27), stripeMat);
+  topStripe.position.y = 0.74;
+  bus.add(topStripe);
+  const bottomStripe = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.085, 2.27), stripeMat);
+  bottomStripe.position.y = 0.5;
+  bus.add(bottomStripe);
+
+  // Dark tinted windows
+  const glassMat = new THREE.MeshStandardMaterial({ color: '#19262b', roughness: 0.25, metalness: 0.75 });
+  const windscreen = new THREE.Mesh(new THREE.PlaneGeometry(1.02, 0.45), glassMat);
+  windscreen.position.set(0, 0.9, 1.13);
+  bus.add(windscreen);
+  const rearWindow = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.42), glassMat);
+  rearWindow.rotation.y = Math.PI;
+  rearWindow.position.set(0, 0.9, -1.13);
+  bus.add(rearWindow);
+
+  // Wheels
+  const wheelMat = new THREE.MeshStandardMaterial({ color: '#181b1d', roughness: 0.85 });
+  const wheelGeom = new THREE.CylinderGeometry(0.23, 0.23, 0.15, 12);
+  wheelGeom.rotateZ(Math.PI / 2);
+  [
+    [-0.56, 0.23, 0.68],
+    [0.56, 0.23, 0.68],
+    [-0.56, 0.23, -0.68],
+    [0.56, 0.23, -0.68],
+  ].forEach(([x, y, z]) => {
+    const wheel = new THREE.Mesh(wheelGeom, wheelMat);
+    wheel.position.set(x, y, z);
+    wheel.castShadow = true;
+    bus.add(wheel);
+  });
+
+  // Glowing red taillights facing the runner
+  const redLightMat = new THREE.MeshStandardMaterial({ color: '#e62e2e', emissive: '#c41919', emissiveIntensity: 1.8 });
+  [-0.42, 0.42].forEach((x) => {
+    const light = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.11, 0.04), redLightMat);
+    light.position.set(x, 0.46, 1.135);
+    bus.add(light);
+  });
+
+  return bus;
+}
+
+function createHurdle() {
+  const hurdle = new THREE.Group();
+  const barMat = new THREE.MeshStandardMaterial({ color: '#e55229', roughness: 0.58, metalness: 0.08 });
+  const stripeMat = new THREE.MeshStandardMaterial({ color: '#f5f0e8', roughness: 0.5 });
+
+  // Jumpable barrier crossbar (height 0.42m)
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.22, 0.12), barMat);
+  bar.position.y = 0.36;
+  bar.castShadow = true;
+  hurdle.add(bar);
+
+  // Reflective chevron marks
+  [-0.44, -0.22, 0, 0.22, 0.44].forEach((x) => {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.225, 0.13), stripeMat);
+    stripe.position.set(x, 0.36, 0);
+    hurdle.add(stripe);
+  });
+
+  // Support legs
+  const legMat = new THREE.MeshStandardMaterial({ color: '#262c2e', roughness: 0.8 });
+  const legGeom = new THREE.BoxGeometry(0.08, 0.48, 0.46);
+  [-0.54, 0.54].forEach((x) => {
+    const leg = new THREE.Mesh(legGeom, legMat);
+    leg.position.set(x, 0.24, 0);
+    leg.castShadow = true;
+    hurdle.add(leg);
+  });
+  return hurdle;
+}
+
+function createCrate() {
+  const crate = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({ color: '#8e562c', roughness: 0.82, metalness: 0.05 });
+  const strapMat = new THREE.MeshStandardMaterial({ color: '#dca45a', roughness: 0.6 });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.86, 0.86), woodMat);
+  box.position.y = 0.43;
+  box.castShadow = true;
+  crate.add(box);
+  const strapH = new THREE.Mesh(new THREE.BoxGeometry(0.97, 0.075, 0.88), strapMat);
+  strapH.position.y = 0.43;
+  crate.add(strapH);
+  const strapV = new THREE.Mesh(new THREE.BoxGeometry(0.97, 0.88, 0.075), strapMat);
+  strapV.position.y = 0.43;
+  crate.add(strapV);
+  return crate;
+}
+
+function createCoinMesh() {
+  const coinGroup = new THREE.Group();
+  const coinMat = new THREE.MeshStandardMaterial({
+    color: '#ffc83b',
+    emissive: '#d27c18',
+    emissiveIntensity: 1.4,
+    metalness: 0.7,
+    roughness: 0.28,
+  });
+  const cylinder = new THREE.CylinderGeometry(0.24, 0.24, 0.065, 18);
+  cylinder.rotateX(Math.PI / 2);
+  const coin = new THREE.Mesh(cylinder, coinMat);
+  coin.castShadow = true;
+  coinGroup.add(coin);
+  return coinGroup;
+}
 
 export class IdentityDash {
   constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
@@ -24,6 +151,7 @@ export class IdentityDash {
     this.speed = 8;
     this.spawnTimer = 0.7;
     this.hitCooldown = 0;
+    this.shake = 0;
     this.items = [];
     this.roadMarks = [];
     this.disposed = false;
@@ -178,21 +306,6 @@ export class IdentityDash {
         this.scene.add(lamp);
       }
     }
-
-    const sign = new THREE.Group();
-    sign.position.set(4.1, 2.2, -15);
-    const board = new THREE.Mesh(
-      new THREE.BoxGeometry(1.35, 0.62, 0.1),
-      new THREE.MeshStandardMaterial({ color: '#ed7842', emissive: '#9d3013', emissiveIntensity: 0.95 }),
-    );
-    sign.add(board);
-    const frame = new THREE.Mesh(
-      new THREE.BoxGeometry(1.5, 0.73, 0.08),
-      new THREE.MeshStandardMaterial({ color: '#f4c36f', emissive: '#795019', emissiveIntensity: 0.35 }),
-    );
-    frame.position.z = -0.075;
-    sign.add(frame);
-    this.scene.add(sign);
   }
 
   setStyle(style = PREVIEW_STYLE) {
@@ -218,14 +331,17 @@ export class IdentityDash {
     else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') this.move(1);
     else if (event.key === 'ArrowUp' || event.key === ' ' || event.key.toLowerCase() === 'w') this.jump();
     else if (event.key === 'Escape') this.state === 'running' ? this.pause() : this.state === 'paused' ? this.resume() : null;
+    else if ((event.key === 'Enter' || event.key.toLowerCase() === 'r') && ['over', 'won'].includes(this.state)) this.start();
+    else if (event.key === 'Enter' && this.state === 'menu') this.start();
   }
 
   handleTouchStart(event) {
+    if (!event.changedTouches?.[0]) return;
     this.touchOrigin = { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
   }
 
   handleTouchEnd(event) {
-    if (!this.touchOrigin) return;
+    if (!this.touchOrigin || !event.changedTouches?.[0]) return;
     const dx = event.changedTouches[0].clientX - this.touchOrigin.x;
     const dy = event.changedTouches[0].clientY - this.touchOrigin.y;
     this.touchOrigin = null;
@@ -242,42 +358,43 @@ export class IdentityDash {
   jump() {
     if (this.state !== 'running' || this.jumpTime > 0) return;
     this.jumpTime = 0.72;
+    sound.playJump();
   }
 
   spawnObstacleRow() {
-    const kind = Math.random() > 0.58 ? 'crate' : 'hurdle';
-    const lane = randomLane();
-    const object = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: kind === 'crate' ? '#c66c3b' : '#eea342',
-      roughness: 0.62,
-      metalness: 0.08,
-    });
-    const shape = new THREE.Mesh(
-      kind === 'crate' ? new THREE.BoxGeometry(0.88, 0.85, 0.76) : new THREE.BoxGeometry(0.95, 0.46, 0.48),
-      bodyMat,
-    );
-    shape.position.y = kind === 'crate' ? 0.46 : 0.23;
-    shape.castShadow = true;
-    object.add(shape);
-    const band = new THREE.Mesh(
-      new THREE.BoxGeometry(kind === 'crate' ? 0.9 : 0.97, 0.075, 0.49),
-      new THREE.MeshStandardMaterial({ color: '#f6d39b', emissive: '#a55e24', emissiveIntensity: 0.28 }),
-    );
-    band.position.y = kind === 'crate' ? 0.47 : 0.25;
-    object.add(band);
-    object.position.set(LANES[lane], 0, -42);
-    this.scene.add(object);
-    this.items.push({ type: 'obstacle', kind, lane, mesh: object, hit: false });
+    const rand = Math.random();
+    // 38% Danfo minibus, 38% Hurdle, 24% Market Crate
+    const primaryKind = rand < 0.38 ? 'danfo' : rand < 0.76 ? 'hurdle' : 'crate';
+    const primaryLane = randomLane();
 
-    const coinLane = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
-    for (let i = 0; i < 4; i += 1) {
-      const coin = new THREE.Mesh(
-        new THREE.TorusGeometry(0.23, 0.075, 8, 18),
-        new THREE.MeshStandardMaterial({ color: '#ffd477', emissive: '#d68128', emissiveIntensity: 1.35, metalness: 0.55, roughness: 0.3 }),
-      );
-      coin.position.set(LANES[coinLane], 1.14, -39 - i * 1.14);
-      coin.castShadow = true;
+    // At higher speeds, occasionally spawn 2 obstacles, but guarantee at least one lane is safe or jumpable
+    const spawnDouble = this.speed > 11.5 && Math.random() < 0.38;
+    const lanesToSpawn = [primaryLane];
+    if (spawnDouble) {
+      const secondLane = (primaryLane + (Math.random() < 0.5 ? 1 : 2)) % 3;
+      lanesToSpawn.push(secondLane);
+    }
+
+    lanesToSpawn.forEach((lane, idx) => {
+      // If spawning two obstacles, ensure at least one is a jumpable hurdle to guarantee a fair route
+      const kind = (idx === 1 && primaryKind !== 'hurdle') ? 'hurdle' : primaryKind;
+      let mesh;
+      if (kind === 'danfo') mesh = createDanfoBus();
+      else if (kind === 'hurdle') mesh = createHurdle();
+      else mesh = createCrate();
+
+      mesh.position.set(LANES[lane], 0, -42);
+      this.scene.add(mesh);
+      this.items.push({ type: 'obstacle', kind, lane, mesh, hit: false });
+    });
+
+    // Spawn coin trail in an unblocked safe lane
+    const safeLanes = [0, 1, 2].filter((l) => !lanesToSpawn.includes(l));
+    const coinLane = safeLanes.length ? safeLanes[Math.floor(Math.random() * safeLanes.length)] : randomLane();
+    const trailLength = Math.random() < 0.4 ? 4 : 3;
+    for (let i = 0; i < trailLength; i += 1) {
+      const coin = createCoinMesh();
+      coin.position.set(LANES[coinLane], 0.72, -38 - i * 1.25);
       this.scene.add(coin);
       this.items.push({ type: 'coin', lane: coinLane, mesh: coin, collected: false });
     }
@@ -296,7 +413,9 @@ export class IdentityDash {
     this.speed = 8;
     this.spawnTimer = 0.5;
     this.hitCooldown = 0;
+    this.shake = 0;
     this.lastFrame = performance.now();
+    sound.playStart();
     this.notify();
   }
 
@@ -306,7 +425,8 @@ export class IdentityDash {
     this.lane = 1;
     this.targetLane = 1;
     this.jumpTime = 0;
-    this.character.position.set(0, 0, 0);
+    this.character.position.set(0, 0, 2.15);
+    this.character.visible = true;
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
     this.notify();
@@ -328,11 +448,14 @@ export class IdentityDash {
   hit() {
     if (this.hitCooldown > 0 || this.state !== 'running') return;
     this.lives -= 1;
-    this.hitCooldown = 1.1;
+    this.hitCooldown = 1.2;
+    this.shake = 0.38;
+    sound.playHit();
     if (this.lives <= 0) {
       this.state = 'over';
       this.best = Math.max(this.best, Math.floor(this.score));
       try { localStorage.setItem('arcade:identity-dash:best', String(this.best)); } catch {}
+      sound.playGameOver();
     }
     this.notify();
   }
@@ -361,6 +484,14 @@ export class IdentityDash {
     this.elapsed += dt;
     const running = this.state === 'running';
     this.hitCooldown = Math.max(0, this.hitCooldown - dt);
+
+    // Character invulnerability flash
+    if (this.hitCooldown > 0) {
+      this.character.visible = Math.floor(this.elapsed * 16) % 2 === 0;
+    } else {
+      this.character.visible = true;
+    }
+
     this.lane += (this.targetLane - this.lane) * Math.min(1, dt * 12);
     this.character.position.x = LANES[Math.round(this.lane)] + (LANES[this.targetLane] - LANES[Math.round(this.lane)]) * Math.min(1, Math.abs(this.lane - Math.round(this.lane)) * 2);
     this.character.position.x = THREE.MathUtils.damp(this.character.position.x, LANES[this.targetLane], 11, dt);
@@ -381,33 +512,38 @@ export class IdentityDash {
       if (mark.position.z > 5) mark.position.z -= 67.2;
     }
     if (running) {
-      this.speed = Math.min(17, this.speed + dt * 0.12);
+      this.speed = Math.min(18.5, this.speed + dt * 0.11);
       this.score += dt * this.speed * 2.2;
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         this.spawnObstacleRow();
-        this.spawnTimer = Math.max(0.93, 1.45 - (this.speed - 8) * 0.045) + Math.random() * 0.3;
+        this.spawnTimer = Math.max(0.88, 1.45 - (this.speed - 8) * 0.045) + Math.random() * 0.28;
       }
     }
 
     for (const item of this.items) {
       if (running && !item.collected) item.mesh.position.z += this.speed * dt;
       if (item.type === 'coin') {
-        item.mesh.rotation.y += dt * 2.4;
+        item.mesh.rotation.y += dt * 3.2;
         item.mesh.rotation.x = Math.sin(this.elapsed * 3 + item.mesh.position.z) * 0.12;
         const alignedLane = item.lane === this.targetLane;
-        if (running && alignedLane && Math.abs(item.mesh.position.z - 2) < 0.54 && Math.abs(this.character.position.y - 0.6) < 0.7) {
+        if (running && alignedLane && Math.abs(item.mesh.position.z - 2.15) < 0.65 && Math.abs(this.character.position.y - 0.7) < 0.75) {
           item.collected = true;
           item.mesh.visible = false;
           this.coins += 1;
           this.score += 35;
+          sound.playCoin();
           this.notify();
         }
       } else if (running && !item.hit && item.lane === this.targetLane && Math.abs(item.mesh.position.z - 2.15) < 0.82) {
-        const clearedHurdle = item.kind === 'hurdle' && this.character.position.y > 0.55;
-        item.hit = true;
-        item.mesh.visible = false;
-        if (!clearedHurdle) this.hit();
+        const clearedHurdle = item.kind === 'hurdle' && this.character.position.y > 0.48;
+        if (clearedHurdle) {
+          // cleanly cleared the hurdle
+        } else {
+          item.hit = true;
+          item.mesh.visible = false;
+          this.hit();
+        }
       }
     }
     this.items = this.items.filter((item) => {
@@ -415,7 +551,16 @@ export class IdentityDash {
       if (!keep) this.disposeItem(item);
       return keep;
     });
-    this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, this.character.position.x * 0.12, 2.8, dt);
+
+    let targetCamX = this.character.position.x * 0.12;
+    let targetCamY = 5.2;
+    if (this.shake > 0) {
+      this.shake = Math.max(0, this.shake - dt * 1.8);
+      targetCamX += (Math.random() - 0.5) * this.shake * 0.8;
+      targetCamY += (Math.random() - 0.5) * this.shake * 0.8;
+    }
+    this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, targetCamX, 2.8, dt);
+    this.camera.position.y = THREE.MathUtils.damp(this.camera.position.y, targetCamY, 2.8, dt);
     this.camera.lookAt(this.character.position.x * 0.1, 0.9, -3.8);
   }
 

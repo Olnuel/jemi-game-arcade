@@ -1,3 +1,4 @@
+import { sound } from './audio/sound.js';
 import { IdentityDash } from './games/identity-dash.js';
 import { AvatarJump } from './games/avatar-jump.js';
 import { Salubata } from './games/salubata.js';
@@ -71,7 +72,12 @@ app.innerHTML = `
             <div class="hud-score"><span id="hud-score-label">DISTANCE</span><strong id="score-value">000</strong><small id="score-unit">m</small></div>
             <div class="hud-stat"><span class="coin-mark" aria-hidden="true">₦</span><span id="coin-value">0</span><small id="collectible-label">COINS</small></div>
             <div class="hud-stat life-stat"><span id="hud-life-label">RUNS</span><strong id="life-value">● ● ●</strong></div>
-          <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
+          <div class="hud-actions">
+            <button class="sound-button" id="sound-button" type="button" aria-label="Toggle sound">
+              <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M9.5 4.5 5 8H2v4h3l4.5 3.5V4.5zM14 7a4.5 4.5 0 0 1 0 6M16 4.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
+          </div>
           </div>
           <div class="game-message" id="game-message" hidden aria-live="assertive"></div>
           <div class="touch-controls" aria-label="Touch game controls">
@@ -263,7 +269,7 @@ function updateRunUI(state) {
   }
 
   const labels = {
-    paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
+    paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" data-action="restart">Restart</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
     over: `<strong>${state.resultTitle || 'Good game.'}</strong><span>${state.resultBody || `${state.score} metres · ${state.coins} coins`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
     won: `<strong>${state.resultTitle || 'You made it.'}</strong><span>${state.resultBody || `${state.score} points`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
   };
@@ -299,6 +305,22 @@ function returnHome() {
 }
 
 startButton.addEventListener('click', startRun);
+const soundButton = document.querySelector('#sound-button');
+function updateSoundButton() {
+  if (!soundButton) return;
+  const muted = sound.isMuted();
+  soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+  soundButton.classList.toggle('is-muted', muted);
+  soundButton.innerHTML = muted
+    ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M9.5 4.5 5 8H2v4h3l4.5 3.5V4.5zM13 7l5 6M18 7l-5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M9.5 4.5 5 8H2v4h3l4.5 3.5V4.5zM14 7a4.5 4.5 0 0 1 0 6M16 4.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+soundButton?.addEventListener('click', () => {
+  sound.toggleMute();
+  updateSoundButton();
+});
+updateSoundButton();
+
 pauseButton.addEventListener('click', () => {
   if (controller.state === 'paused') controller.resume();
   else controller.pause();

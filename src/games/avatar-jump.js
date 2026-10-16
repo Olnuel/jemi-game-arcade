@@ -1,3 +1,4 @@
+import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
@@ -208,6 +209,7 @@ export class AvatarJump {
     if (this.state !== 'running' || !this.grounded) return;
     this.grounded = false;
     this.velocityY = 10.2;
+    sound.playJump();
   }
 
   start() {
@@ -226,6 +228,7 @@ export class AvatarJump {
       collectible.mesh.visible = true;
     }
     this.camera.position.y = 8;
+    sound.playStart();
     this.notify();
   }
 
@@ -257,6 +260,7 @@ export class AvatarJump {
     }
     if (platform.userData.finish) {
       this.state = 'won';
+      sound.playStart();
       this.best = Math.max(this.best, this.score);
       try { localStorage.setItem('arcade:avatar-jump:best', String(this.best)); } catch {}
     }
@@ -294,6 +298,7 @@ export class AvatarJump {
         if (Math.hypot(this.character.position.x - star.x, this.character.position.y - star.y) < 0.76) {
           collectible.collected = true;
           collectible.mesh.visible = false;
+          sound.playCoin();
           this.stars += 1;
           this.score += 50;
           this.notify();
@@ -301,6 +306,7 @@ export class AvatarJump {
       }
       if (this.character.position.x < -3.15 || this.character.position.x > 3.15 || this.character.position.y < -3) {
         this.state = 'over';
+        sound.playGameOver();
         this.best = Math.max(this.best, this.score);
         try { localStorage.setItem('arcade:avatar-jump:best', String(this.best)); } catch {}
         this.notify();
