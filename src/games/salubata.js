@@ -68,6 +68,8 @@ export class Salubata {
     this.resizeObserver.observe(canvas.parentElement);
     this.onKeyDown = (event) => this.handleKeyDown(event);
     this.onKeyUp = (event) => this.handleKeyUp(event);
+    this.onPointerDown = (event) => { event.preventDefault(); this.beginCharge(); };
+    this.onPointerUp = (event) => { event.preventDefault(); this.releaseCharge(); };
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     this.resize();
@@ -162,9 +164,7 @@ export class Salubata {
 
   handleKeyDown(event) {
     const key = event.key.toLowerCase();
-    if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'a', 'd', 's', 'w'].includes(key)) {
-      if (['running', 'paused'].includes(this.state)) event.preventDefault();
-    }
+    if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'a', 'd', 's', 'w'].includes(key)) event.preventDefault();
     if (event.repeat) return;
     if (key === 'arrowleft' || key === 'a') this.move(-1);
     else if (key === 'arrowright' || key === 'd') this.move(1);
@@ -196,20 +196,15 @@ export class Salubata {
     const elapsed = Math.max(0.12, (timeStamp - this.throwStart) / 1000);
     const power = clamp(elapsed / 1.15, 0.12, 1);
     this.throwStart = null;
-    if (this.phase === 'backward-aim') {
-      sound.playJump();
-      this.throwBackward(power);
-    } else if (this.phase === 'slide-aim') {
-      sound.playJump();
-      this.throwSlide(power);
-    }
+    if (this.phase === 'backward-aim') this.throwBackward(power);
+    else if (this.phase === 'slide-aim') this.throwSlide(power);
   }
 
   throwAction() {
     if (this.state !== 'running') return;
     this.throwStart = null;
-    if (this.phase === 'backward-aim') this.throwBackward(0.72);
-    else if (this.phase === 'slide-aim') this.throwSlide(0.72);
+    if (this.phase === 'backward-aim') { sound.playJump(); this.throwBackward(0.72); }
+    else if (this.phase === 'slide-aim') { sound.playJump(); this.throwSlide(0.72); }
   }
 
   resetSlipper() {
@@ -243,29 +238,6 @@ export class Salubata {
     this.notify();
   }
 
-  returnToMenu() {
-    this.resetSlipper();
-    this.state = 'menu';
-    this.phase = 'backward-aim';
-    this.turn = 1;
-    this.round = 1;
-    this.score = 0;
-    this.removed = 0;
-    this.playerIndex = 0;
-    this.marker.visible = false;
-    this.character.position.set(0, 0.55, 2.7);
-    this.playerZ = 2.7;
-    this.playerX = 0;
-    this.aim = 1;
-    this.camera.position.set(0, 10, 16);
-    this.camera.lookAt(0, 0.8, 0);
-    this.bands.forEach((band) => {
-      band.removed = false;
-      band.mesh.visible = true;
-    });
-    this.notify();
-  }
-
   pause() { if (this.state === 'running') { this.state = 'paused'; this.throwStart = null; this.notify(); } }
   resume() { if (this.state === 'paused') { this.state = 'running'; this.lastFrame = performance.now(); this.notify(); } }
 
@@ -286,9 +258,9 @@ export class Salubata {
     this.slidePower = power;
     this.slideSpeed = 7 + power * 7.1;
     this.slidePrevZ = this.slipper.position.z;
-    const aimOffset = (this.aim - 1) * 0.42;
-    this.slipperVelocity = { x: aimOffset * this.slideSpeed * 0.16, y: 0, z: -this.slideSpeed };
+    this.slipper.position.x = LANES[this.aim];
     this.slipper.rotation.x = -Math.PI / 2;
+    this.slipperVelocity = { x: 0, y: 0, z: -this.slideSpeed };
     this.marker.visible = false;
     this.notify();
   }
@@ -350,7 +322,6 @@ export class Salubata {
       }
     } else if (this.state === 'running' && this.phase === 'sliding') {
       this.slidePrevZ = this.slipper.position.z;
-      this.slipper.position.x += this.slipperVelocity.x * dt;
       this.slipper.position.z += this.slipperVelocity.z * dt;
       this.slideSpeed = Math.max(0, this.slideSpeed - 4.1 * dt);
       this.slipperVelocity.z = -this.slideSpeed;
