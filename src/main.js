@@ -163,6 +163,7 @@ function setBody(id) {
   currentStyle = resolveStyle();
   controller?.setStyle(currentStyle);
   renderBodyOptions(id);
+  document.querySelector('.profile-panel')?.setAttribute('data-body', currentStyle.body);
 }
 
 function renderBodyOptions(selected = bodyOverride) {
@@ -198,8 +199,16 @@ async function publishRunScore(state) {
 }
 
 async function refreshLeaderboard() {
+  const panel = document.querySelector('#leaderboard-panel');
   const board = document.querySelector('#leaderboard-list');
-  if (!board || !START_NG) return;
+  if (!board) return;
+  // The panel is always visible so the board is discoverable; off-platform it
+  // explains itself rather than showing an empty list.
+  panel.hidden = false;
+  if (!START_NG) {
+    board.innerHTML = '<li class="leaderboard-empty">Live on your Start.ng address. Signed-in players score here.</li>';
+    return;
+  }
   try {
     const entries = await readStartNgLeaderboard(5);
     if (!entries.length) {
@@ -250,6 +259,7 @@ function applyIdentity(user, signedIn = true) {
   panel.style.setProperty('--character-hair', currentStyle.hairColor || PREVIEW_STYLE.hairColor);
   panel.style.setProperty('--character-top', currentStyle.primaryColor || PREVIEW_STYLE.primaryColor);
   panel.style.setProperty('--character-bottoms', currentStyle.secondaryColor || PREVIEW_STYLE.secondaryColor);
+  panel.dataset.body = currentStyle.body;
 }
 
 function handleIdentityLink(event) {
@@ -474,16 +484,14 @@ readStartNgIdentity().then((identity) => {
   if (identity.status === 'unavailable' && START_NG) {
     document.querySelector('#profile-note').textContent = 'Start.ng sign-in could not be checked. Reload this game to try again.';
   }
-  if (START_NG && identity.user) {
-    document.querySelector('#leaderboard-panel').hidden = false;
-    refreshLeaderboard();
-  }
+  refreshLeaderboard();
 }).catch((error) => {
   console.warn('Start.ng sign-in check failed.', error);
+  refreshLeaderboard();
 });
 onStartNgUserChange((user) => {
   applyIdentity(user);
-  if (user) refreshLeaderboard();
+  refreshLeaderboard();
 });
 
 window.addEventListener('pagehide', () => controller?.dispose(), { once: true });

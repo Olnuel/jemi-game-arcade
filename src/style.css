@@ -138,10 +138,13 @@ h1 em { color: var(--mint); font-style: normal; }
 .panel-heading { display: flex; justify-content: space-between; color: #c0a894; font: 9px var(--mono); letter-spacing: .1em; }
 .panel-lock { color: var(--orange); font-size: 16px; line-height: 10px; }
 .player-row { display: flex; align-items: center; gap: 11px; margin-top: 13px; }
-.player-avatar { width: 41px; height: 41px; overflow: hidden; position: relative; flex: 0 0 auto; border-radius: 50%; background: #3d2320; }
-.player-avatar::before { content: ''; width: 18px; height: 18px; position: absolute; top: 6px; left: 12px; border-radius: 50%; background: var(--character-skin, #8d5038); box-shadow: 0 -4px 0 1px var(--character-hair, #271b19); }
-.player-avatar::after { content: ''; width: 28px; height: 20px; position: absolute; bottom: -4px; left: 6px; border-radius: 14px 14px 2px 2px; background: var(--character-top, var(--orange)); }
-.player-avatar span { width: 30px; height: 4px; position: absolute; z-index: 1; top: 27px; left: 6px; background: var(--character-bottoms, var(--mint)); transform: rotate(-11deg); }
+.player-avatar { --shoulder: 28px; --hair-drop: 0px; width: 41px; height: 41px; overflow: hidden; position: relative; flex: 0 0 auto; border-radius: 50%; background: #3d2320; }
+.player-avatar::before { content: ''; width: 18px; height: 18px; position: absolute; top: 6px; left: 12px; border-radius: 50%; background: var(--character-skin, #8d5038); box-shadow: 0 -4px 0 1px var(--character-hair, #271b19), 0 var(--hair-drop) 0 3px var(--character-hair, #271b19); }
+.player-avatar::after { content: ''; width: var(--shoulder); height: 20px; position: absolute; bottom: -4px; left: calc(50% - var(--shoulder) / 2); border-radius: 14px 14px 2px 2px; background: var(--character-top, var(--orange)); }
+.player-avatar span { width: calc(var(--shoulder) + 2px); height: 4px; position: absolute; z-index: 1; top: 27px; left: calc(50% - (var(--shoulder) + 2px) / 2); background: var(--character-bottoms, var(--mint)); transform: rotate(-11deg); }
+/* The shoulder width and hair silhouette follow the chosen body. */
+.profile-panel[data-body='male'] .player-avatar { --shoulder: 32px; }
+.profile-panel[data-body='female'] .player-avatar { --shoulder: 26px; --hair-drop: 5px; }
 .player-row > div:nth-child(2) { display: flex; flex-direction: column; gap: 4px; }
 .player-row strong { font-size: 12px; }
 .profile-state { color: #bca38d; font-size: 10px; }
