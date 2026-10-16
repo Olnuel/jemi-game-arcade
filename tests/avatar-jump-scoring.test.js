@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { getFallLimit, persistBestScore } from '../src/games/avatar-jump.js';
 
 test('fall threshold follows active platform height', () => {
-  assert.equal(getFallLimit({ userData: { top: 7.2 } }), 4.4);
+  assert.ok(Math.abs(getFallLimit({ userData: { top: 7.2 } }) - 4.4) < 1e-9);
   assert.equal(getFallLimit({ userData: { top: 0 } }), -2.8);
   assert.equal(getFallLimit(null), -2.5);
 });
