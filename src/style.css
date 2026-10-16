@@ -276,16 +276,6 @@ body.game-fullscreen .feature { display: block; }
   .sound-button svg { width: 16px; height: 16px; }
 }
 
-/* Salubata local multiplayer selection */
-.player-count-picker { margin: 14px 0 16px; max-width: 430px; }
-.player-count-picker[hidden] { display: none; }
-.player-count-label { display: block; margin-bottom: 8px; color: var(--gold); font: 500 10px/1.4 var(--mono); letter-spacing: .12em; }
-.player-count-options { display: flex; flex-wrap: wrap; gap: 7px; }
-.player-count-options button { min-height: 36px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px; background: rgba(24,33,31,.9); color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
-.player-count-options button:hover, .player-count-options button.is-selected { border-color: var(--mint); background: rgba(89,222,197,.13); color: var(--mint); }
-.player-count-picker p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
-@media (max-width: 600px) { .player-count-options { gap: 6px; } .player-count-options button { padding: 8px 9px; font-size: 11px; } }
-
 
 /* Brighter Naija arcade art direction: electric blue, danfo yellow, palm green and market orange. */
 :root {
