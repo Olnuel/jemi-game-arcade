@@ -31,7 +31,7 @@ function createSlipper() {
 }
 
 export class Salubata {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {}, playerCount = 2 } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {}, playerCount = 1 } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
     this.state = 'menu';
@@ -40,7 +40,7 @@ export class Salubata {
     this.round = 1;
     this.score = 0;
     this.removed = 0;
-    this.playerCount = clamp(Math.floor(playerCount) || 2, 1, 4);
+    this.playerCount = 1;
     this.players = Array.from({ length: this.playerCount }, (_, index) => ({
       name: `Player ${index + 1}`, score: 0, bands: 0,
     }));
@@ -53,8 +53,8 @@ export class Salubata {
     this.slipper = null;
     this.disposed = false;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#151e20');
-    this.scene.fog = new THREE.FogExp2('#151e20', 0.028);
+    this.scene.background = new THREE.Color('#77c8f2');
+    this.scene.fog = new THREE.FogExp2('#9bdaf2', 0.018);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 10, 16);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -63,7 +63,7 @@ export class Salubata {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.25;
     this.buildScene(style);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas.parentElement);
@@ -81,45 +81,45 @@ export class Salubata {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#ffdfbd', '#362d27', 2.05));
-    const lamp = new THREE.DirectionalLight('#ffd39a', 2.6);
+    this.scene.add(new THREE.HemisphereLight('#fff3d2', '#47854b', 2.7));
+    const lamp = new THREE.DirectionalLight('#fff0b0', 3.2);
     lamp.position.set(-4, 9, 5);
     lamp.castShadow = true;
     lamp.shadow.mapSize.set(1024, 1024);
     this.scene.add(lamp);
 
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#292d29', roughness: 0.96 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#b66e42', roughness: 0.96 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.08, -2.5);
     ground.receiveShadow = true;
     this.scene.add(ground);
-    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#32312d', roughness: 0.9 }));
+    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#d49a61', roughness: 0.9 }));
     alley.rotation.x = -Math.PI / 2;
     alley.position.set(0, -0.03, -2.5);
     alley.receiveShadow = true;
     this.scene.add(alley);
 
-    const lineMat = new THREE.MeshStandardMaterial({ color: '#d98a4c', emissive: '#713514', emissiveIntensity: 0.38 });
+    const lineMat = new THREE.MeshStandardMaterial({ color: '#f5d247', emissive: '#9b5614', emissiveIntensity: 0.22 });
     for (const x of [-4.1, 4.1]) {
       const line = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.025, 23), lineMat);
       line.position.set(x, 0.012, -2.5);
       this.scene.add(line);
     }
-    const throwLine = new THREE.Mesh(new THREE.BoxGeometry(8.15, 0.018, 0.055), new THREE.MeshStandardMaterial({ color: '#cbb88e', roughness: 1 }));
+    const throwLine = new THREE.Mesh(new THREE.BoxGeometry(8.15, 0.018, 0.055), new THREE.MeshStandardMaterial({ color: '#fff0b8', roughness: 1 }));
     throwLine.position.set(0, 0.015, 2.7);
     this.scene.add(throwLine);
     for (let index = 0; index < 6; index += 1) {
       const z = 1 - index * 3.8;
-      addMarketStall(this.scene, { x: -5.15, z, scale: 0.95, sign: index % 2 ? 'SUYA' : 'LAGOS', accent: '#df7848' });
-      addMarketStall(this.scene, { x: 5.15, z: z - 1.1, scale: 0.93, sign: index % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#168f7e' });
+      addMarketStall(this.scene, { x: -5.15, z, scale: 0.95, sign: index % 2 ? 'SUYA' : 'LAGOS', accent: '#ff713b' });
+      addMarketStall(this.scene, { x: 5.15, z: z - 1.1, scale: 0.93, sign: index % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#28b78c' });
     }
     addStringLights(this.scene, { start: [-5.2, 4.0, 2], end: [5.2, 4.0, -6], count: 12 });
-    const skyline = makeLabel('LAGOS · STREET PLAY', '#f4d49a');
+    const skyline = makeLabel('SALUBATA · STREET PLAY', '#fff1a8');
     skyline.position.set(0, 5.4, -8.5);
     skyline.scale.set(5.8, 1.1, 1);
     this.scene.add(skyline);
 
-    this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#59dec5' }));
+    this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#ffcf32' }));
     this.targetRing.rotation.x = Math.PI / 2;
     this.targetRing.position.set(0, 0.035, -2.75);
     this.scene.add(this.targetRing);
@@ -376,7 +376,7 @@ export class Salubata {
     const highestBandCount = Math.max(...this.players.map((entry) => entry.bands));
     const leaders = this.players.filter((entry) => entry.bands === highestBandCount);
     const leader = leaders.length === 1 ? leaders[0] : null;
-    const label = this.state === 'won' ? 'Circle cleared' : `${player.name} · ${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
+    const label = this.state === 'won' ? 'Circle cleared' : `${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
     const playerScores = this.players.map((entry, index) => `P${index + 1} ${entry.bands}`).join(' · ');
     const instructions = this.phase === 'backward-aim'
       ? 'HOLD ↓ / SPACE'
@@ -402,7 +402,7 @@ export class Salubata {
       phase: this.phase,
       phaseLabel: label,
       phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : instructions,
-      resultTitle: this.state === 'won' ? (leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
+      resultTitle: this.state === 'won' ? (this.players.length === 1 ? 'You cleared the circle!' : leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
       resultBody: this.players.map((entry) => `${entry.name}: ${entry.bands} bands`).join(' · '),
       resultAction: 'Play another match',
     });
