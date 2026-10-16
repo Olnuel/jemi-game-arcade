@@ -198,7 +198,7 @@ function selectGame(id) {
   const firstWord = words.shift();
   title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
-  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Start match';
+  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Start game';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
     ? 'ARROWS TO MOVE · SPACE TO JUMP'
     : game.id === 'avatar-jump'
@@ -215,7 +215,7 @@ function selectGame(id) {
   document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS AFTER DARK' : game.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   createController();
   renderShelf();
-  // Salubata opens on its single-player setup screen.
+  // Salubata waits on the menu until the player starts a solo run.
   if (game.id !== 'salubata') startRun();
 }
 
@@ -236,8 +236,8 @@ function updateRunUI(state) {
   document.querySelector('#coin-value').textContent = state.coins;
   document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
   document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
-  document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND · PLAYER' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
-  document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1} · P${state.turn || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
+  document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
   document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
