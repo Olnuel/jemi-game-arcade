@@ -5,16 +5,16 @@
   font-family: 'Manrope', 'Segoe UI', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #f4f0e7;
-  --muted: #a6aca7;
-  --dim: #6f7b78;
-  --ground: #101716;
-  --panel: #18211f;
-  --panel-light: #202b28;
-  --line: #34403c;
-  --mint: #59dec5;
-  --orange: #f19453;
-  --gold: #f2cb82;
+  --ink: #fff8e9;
+  --muted: #bdc9d2;
+  --dim: #788b99;
+  --ground: #091b32;
+  --panel: #112b49;
+  --panel-light: #1b3d60;
+  --line: #31506e;
+  --mint: #35e0b5;
+  --orange: #ff7b35;
+  --gold: #ffd447;
   --mono: 'DM Mono', 'Cascadia Code', monospace;
   font-optical-sizing: auto;
   background: var(--ground);
@@ -285,3 +285,70 @@ body.game-fullscreen .feature { display: block; }
 .player-count-options button:hover, .player-count-options button.is-selected { border-color: var(--mint); background: rgba(89,222,197,.13); color: var(--mint); }
 .player-count-picker p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 @media (max-width: 600px) { .player-count-options { gap: 6px; } .player-count-options button { padding: 8px 9px; font-size: 11px; } }
+
+
+/* Brighter Naija arcade art direction: electric blue, danfo yellow, palm green and market orange. */
+:root {
+  --ground: #071a32;
+  --panel: #102c4c;
+  --panel-light: #174366;
+  --line: #2d5275;
+  --ink: #fff9eb;
+  --muted: #c5d6e7;
+  --mint: #37edbd;
+  --orange: #ff7d38;
+  --gold: #ffd447;
+}
+body { background: #071a32; }
+.app-shell {
+  background:
+    radial-gradient(ellipse at 72% 12%, #145d8d 0%, transparent 38%),
+    radial-gradient(ellipse at 8% 76%, #183f47 0%, transparent 38%),
+    linear-gradient(135deg, #071a32 0%, #0c2945 54%, #102b42 100%);
+}
+.topbar { border-bottom-color: #356083; }
+.brand b, .text-link:hover { color: #ffd447; }
+.brand-mark i { background: linear-gradient(180deg, #ffd447, #ff7d38); }
+.identity-chip { border-color: #47749a; background: #0b2440cc; }
+.arcade-layout { gap: clamp(22px, 3vw, 44px); }
+.scene-wrap {
+  border: 1px solid #4b7294;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #1476a4, #f1a33a 70%, #df5e35);
+  box-shadow: 0 26px 70px #020b19a6, 0 0 0 1px #ffffff0d inset;
+}
+.scene-vignette {
+  background:
+    linear-gradient(90deg, #09203be8 0%, #09203bb8 28%, #09203b28 65%, transparent 100%),
+    linear-gradient(0deg, #091b32e8 0%, transparent 31%, transparent 72%, #09203b48 100%);
+}
+.scene-topline, .scene-footnote { text-shadow: 0 2px 10px #001426; }
+.street-sign {
+  border: 2px solid #fff0a6;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #ffdf45, #ff8536);
+  box-shadow: 0 8px 26px #ff8d354d, inset 0 0 0 4px #fff6b744;
+}
+h1 em { color: #ffd447; }
+.play-button {
+  border-radius: 10px;
+  background: linear-gradient(100deg, #ffe14b, #ffc12f);
+  box-shadow: 0 8px 24px #ffbf2c38;
+}
+.play-button:hover { background: linear-gradient(100deg, #fff08a, #ffd447); }
+.hud { background: #071a32e8; border-bottom-color: #5a85a1; }
+.pause-button, .game-message { border-radius: 16px; background: #0b2440f5; border-color: #5281a3; }
+.game-message button { border-radius: 9px; background: linear-gradient(100deg, #ffe14b, #ffc12f); }
+.game-row { border-bottom-color: #315779; }
+.game-row:hover, .game-row.is-selected { background: linear-gradient(90deg, #17486b, #123654); }
+.game-row.is-selected { box-shadow: inset 4px 0 #ffd447; }
+.game-row.is-selected .game-letter { border-color: #ffd447; color: #ffd447; }
+.game-row-arrow { color: #ffd447; }
+.profile-panel { border-color: #315779; }
+.keyboard-icon { border-color: #47749a; color: #ffd447; }
+.feature-foot { border-color: #315779; }
+.toast { border-radius: 12px; background: #0d2a47; border-color: #5c8cab; }
+@media (max-width: 700px) {
+  .scene-wrap { border-radius: 14px; }
+  .scene-copy { background: linear-gradient(90deg, #09203b75, transparent); }
+}
