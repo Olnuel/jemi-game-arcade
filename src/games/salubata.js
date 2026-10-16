@@ -50,8 +50,8 @@ export class Salubata {
     this.slipper = null;
     this.disposed = false;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#77c8f2');
-    this.scene.fog = new THREE.FogExp2('#9bdaf2', 0.018);
+    this.scene.background = new THREE.Color('#45c6f4');
+    this.scene.fog = new THREE.FogExp2('#c2f0ff', 0.012);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 10, 16);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -60,7 +60,7 @@ export class Salubata {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.25;
+    this.renderer.toneMappingExposure = 1.34;
     this.buildScene(style);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas.parentElement);
@@ -78,19 +78,19 @@ export class Salubata {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#fff3d2', '#47854b', 2.7));
-    const lamp = new THREE.DirectionalLight('#fff0b0', 3.2);
+    this.scene.add(new THREE.HemisphereLight('#fff8d9', '#83c85d', 3.1));
+    const lamp = new THREE.DirectionalLight('#fff5c4', 3.8);
     lamp.position.set(-4, 9, 5);
     lamp.castShadow = true;
     lamp.shadow.mapSize.set(1024, 1024);
     this.scene.add(lamp);
 
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#b66e42', roughness: 0.96 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#e6bd74', roughness: 0.96 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.08, -2.5);
     ground.receiveShadow = true;
     this.scene.add(ground);
-    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#d49a61', roughness: 0.9 }));
+    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#f3d18b', roughness: 0.9 }));
     alley.rotation.x = -Math.PI / 2;
     alley.position.set(0, -0.03, -2.5);
     alley.receiveShadow = true;
@@ -107,16 +107,16 @@ export class Salubata {
     this.scene.add(throwLine);
     for (let index = 0; index < 6; index += 1) {
       const z = 1 - index * 3.8;
-      addMarketStall(this.scene, { x: -5.15, z, scale: 0.95, sign: index % 2 ? 'SUYA' : 'LAGOS', accent: '#ff713b' });
-      addMarketStall(this.scene, { x: 5.15, z: z - 1.1, scale: 0.93, sign: index % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#28b78c' });
+      addMarketStall(this.scene, { x: -5.15, z, scale: 0.95, sign: index % 2 ? 'SUYA' : 'LAGOS', accent: '#ffca05' });
+      addMarketStall(this.scene, { x: 5.15, z: z - 1.1, scale: 0.93, sign: index % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#ff6338' });
     }
     addStringLights(this.scene, { start: [-5.2, 4.0, 2], end: [5.2, 4.0, -6], count: 12 });
-    const skyline = makeLabel('SALUBATA · STREET PLAY', '#fff1a8');
+    const skyline = makeLabel('SALUBATA STREET PARTY', '#fff9d9');
     skyline.position.set(0, 5.4, -8.5);
     skyline.scale.set(5.8, 1.1, 1);
     this.scene.add(skyline);
 
-    this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#ffcf32' }));
+    this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#ffdf37' }));
     this.targetRing.rotation.x = Math.PI / 2;
     this.targetRing.position.set(0, 0.035, -2.75);
     this.scene.add(this.targetRing);
@@ -139,7 +139,7 @@ export class Salubata {
     const positions = [];
     for (const x of LANES) for (const z of [-0.8, -2.35, -3.9]) positions.push([x, z]);
     positions.forEach(([x, z], index) => {
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 8, 22), new THREE.MeshStandardMaterial({ color: index % 2 ? '#e5b96d' : '#65d8bd', emissive: index % 2 ? '#81561f' : '#155d4d', emissiveIntensity: 0.65, roughness: 0.42 }));
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 8, 22), new THREE.MeshStandardMaterial({ color: ['#ffca05', '#ff6338', '#00a878', '#32a9e8', '#ef6da9'][index % 5], emissive: ['#a66b00', '#9b2d17', '#005d42', '#145a9a', '#8f2f5a'][index % 5], emissiveIntensity: 0.65, roughness: 0.42 }));
       band.rotation.x = Math.PI / 2;
       band.position.set(x, 0.09, z);
       band.castShadow = true;
