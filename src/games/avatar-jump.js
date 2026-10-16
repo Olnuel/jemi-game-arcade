@@ -1,10 +1,14 @@
 import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
-import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
+import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const PLAYER_FOOT_OFFSET = 0.56;
+// The figure is modelled with its feet at the root, so the root sits just above
+// the surface. Landing maths uses `position.y - PLAYER_FOOT_OFFSET`, which keeps
+// feet == platform top exactly as before.
+const PLAYER_FOOT_OFFSET = FOOT_Y;
 
 export function getFallLimit(platform) {
   return platform ? platform.userData.top - 2.8 : -2.5;
@@ -104,9 +108,10 @@ function createRooftopPergola(width = 2.6) {
 }
 
 export class AvatarJump {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
+    this.lighting = lighting;
     this.state = 'menu';
     this.score = 0;
     this.stars = 0;
@@ -122,8 +127,6 @@ export class AvatarJump {
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#16232e');
-    this.scene.fog = new THREE.Fog('#16232e', 18, 48);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 8, 14);
 
@@ -157,24 +160,21 @@ export class AvatarJump {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#cce9f5', '#2a3530', 2.1));
-    const sun = new THREE.DirectionalLight('#ffcf94', 2.6);
-    sun.position.set(-5, 14, 8);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    this.scene.add(sun);
+    applyLighting(this.scene, this.lighting);
 
-    const tealWash = new THREE.PointLight('#35d4ba', 25, 22, 2);
-    tealWash.position.set(-4.5, 6, -1.8);
-    this.scene.add(tealWash);
-
-    const amberWash = new THREE.PointLight('#ff924a', 28, 20, 2);
-    amberWash.position.set(4.5, 7, -1.4);
-    this.scene.add(amberWash);
-
-    const rooftopWash = new THREE.PointLight('#ffd166', 32, 18, 2);
-    rooftopWash.position.set(0, 13.5, 1);
-    this.scene.add(rooftopWash);
+    // Market glow: Nigerian green, ember and danfo yellow. It carries the night,
+    // so it is dimmed in daylight.
+    this.washes = [];
+    const addWash = (color, intensity, x, y, z) => {
+      const light = new THREE.PointLight(color, intensity, 22, 2);
+      light.position.set(x, y, z);
+      this.scene.add(light);
+      this.washes.push({ light, base: intensity });
+      return light;
+    };
+    addWash('#00d98a', 25, -4.5, 6, -1.8);
+    addWash('#ff5722', 28, 4.5, 7, -1.4);
+    addWash('#ffcc00', 32, 0, 13.5, 1);
 
     const haze = new THREE.Mesh(
       new THREE.PlaneGeometry(55, 65),
@@ -313,6 +313,15 @@ export class AvatarJump {
     skylineLabel.scale.set(4.5, 0.9, 1);
     skyline.add(skylineLabel);
     this.scene.add(skyline);
+  }
+
+  /** Switches the time of day live, without rebuilding the course. */
+  setLighting(id) {
+    if (!LIGHT_PRESETS[id]) return;
+    this.lighting = id;
+    applyLighting(this.scene, id);
+    const boost = id === 'night' ? 1.35 : id === 'evening' ? 1.1 : 0.55;
+    this.washes?.forEach(({ light, base }) => { light.intensity = base * boost; });
   }
 
   setStyle(style = PREVIEW_STYLE) {
