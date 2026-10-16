@@ -202,7 +202,6 @@ body.game-fullscreen .feature { display: block; }
   .coin-mark { width: 19px; height: 19px; font-size: 9px; }
   .life-stat strong { font-size: 10px; }
   .pause-button { width: 33px; height: 33px; }
-  .touch-controls { display: flex; }
   .feature-foot { min-height: 54px; }
   .feature-caption { font-size: 9px; }
   .feature-best { gap: 7px; }
@@ -235,4 +234,8 @@ body.game-fullscreen .feature { display: block; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+@media (pointer: coarse) {
+  .touch-controls { display: flex; }
 }

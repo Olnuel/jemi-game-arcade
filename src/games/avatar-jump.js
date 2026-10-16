@@ -51,8 +51,12 @@ export class AvatarJump {
     this.resizeObserver.observe(canvas.parentElement);
     this.onKeyDown = (event) => this.handleKeyDown(event);
     this.onKeyUp = (event) => this.handleKeyUp(event);
+    this.onTouchStart = (event) => this.handleTouchStart(event);
+    this.onTouchEnd = (event) => this.handleTouchEnd(event);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+    canvas.addEventListener('touchstart', this.onTouchStart, { passive: true });
+    canvas.addEventListener('touchend', this.onTouchEnd, { passive: true });
     this.resize();
     this.lastFrame = performance.now();
     this.frame = this.frame.bind(this);
@@ -179,6 +183,21 @@ export class AvatarJump {
   }
 
   handleKeyUp() {}
+
+  handleTouchStart(event) {
+    if (!event.changedTouches?.[0]) return;
+    this.touchOrigin = { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+  }
+
+  handleTouchEnd(event) {
+    if (!this.touchOrigin || !event.changedTouches?.[0]) return;
+    const dx = event.changedTouches[0].clientX - this.touchOrigin.x;
+    const dy = event.changedTouches[0].clientY - this.touchOrigin.y;
+    this.touchOrigin = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) this.move(dx > 0 ? 1 : -1);
+    else if (dy < 0) this.jump();
+  }
 
   move(direction) {
     if (this.state !== 'running') return;
@@ -316,6 +335,8 @@ export class AvatarJump {
     this.resizeObserver.disconnect();
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    this.canvas.removeEventListener('touchstart', this.onTouchStart);
+    this.canvas.removeEventListener('touchend', this.onTouchEnd);
     this.scene.traverse((object) => {
       object.userData.disposeTexture?.dispose();
       object.geometry?.dispose();
