@@ -250,6 +250,7 @@ function updateRunUI(state) {
 
   const labels = {
     paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
+    handoff: `<strong>Pass the phone to Player ${state.turn || 2}</strong><span>${state.phaseLabel || 'Next player up'} · ${state.resultBody || ''}</span><button type="button" data-action="continue">Ready, Player ${state.turn || 2}</button>`,
     over: `<strong>${state.resultTitle || 'Good game.'}</strong><span>${state.resultBody || `${state.score} metres · ${state.coins} coins`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
     won: `<strong>${state.resultTitle || 'You made it.'}</strong><span>${state.resultBody || `${state.score} points`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
   };
@@ -257,6 +258,7 @@ function updateRunUI(state) {
     message.innerHTML = labels[state.state];
     message.hidden = false;
     message.querySelector('[data-action="resume"]')?.addEventListener('click', () => controller.resume());
+    message.querySelector('[data-action="continue"]')?.addEventListener('click', () => controller.continueTurn());
     message.querySelector('[data-action="restart"]')?.addEventListener('click', () => controller.start());
     message.querySelector('[data-action="home"]')?.addEventListener('click', returnHome);
   } else {
@@ -304,6 +306,7 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
     if (!controller) return;
     if (button.dataset.action === 'jump') controller.jump();
     else if (button.dataset.action === 'throw') controller.throwAction();
+    else if (button.dataset.action === 'continue') controller.continueTurn?.();
     else controller.move(button.dataset.action === 'left' ? -1 : 1);
   });
 });
