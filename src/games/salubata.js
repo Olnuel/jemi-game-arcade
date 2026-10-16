@@ -31,7 +31,7 @@ function createSlipper() {
 }
 
 export class Salubata {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {}, playerCount = 1 } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
     this.state = 'menu';
@@ -40,10 +40,7 @@ export class Salubata {
     this.round = 1;
     this.score = 0;
     this.removed = 0;
-    this.playerCount = 1;
-    this.players = Array.from({ length: this.playerCount }, (_, index) => ({
-      name: `Player ${index + 1}`, score: 0, bands: 0,
-    }));
+    this.players = [{ name: 'You', score: 0, bands: 0 }];
     this.playerIndex = 0;
     this.slidePlayerIndex = 0;
     this.walkElapsed = 0;
@@ -391,7 +388,7 @@ export class Salubata {
       phaseLabel: label,
       phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : instructions,
       resultTitle: this.state === 'won' ? (this.players.length === 1 ? 'You cleared the circle!' : leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
-      resultBody: this.players.map((entry) => `${entry.name}: ${entry.bands} bands`).join(' · '),
+      resultBody: `You collected ${player.bands} bands.`,
       resultAction: 'Play another match',
     });
   }
