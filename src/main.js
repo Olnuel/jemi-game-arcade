@@ -71,16 +71,6 @@ app.innerHTML = `
                 </div>
                 <p>Play together on the same screen. Turns switch automatically.</p>
               </div>
-              <div class="player-count-picker" id="player-count-picker" hidden aria-label="Choose number of Salubata players">
-                <span class="player-count-label">PLAYERS IN THIS MATCH</span>
-                <div class="player-count-options">
-                  <button type="button" data-player-count="1" aria-pressed="false">1 Player</button>
-                  <button type="button" data-player-count="2" class="is-selected" aria-pressed="true">2 Players</button>
-                  <button type="button" data-player-count="3" aria-pressed="false">3 Players</button>
-                  <button type="button" data-player-count="4" aria-pressed="false">4 Players</button>
-                </div>
-                <p>Play together on the same screen. Turns switch automatically.</p>
-              </div>
               <button class="play-button" id="start-button" type="button">
                 <span>Start running</span><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6 3.8 15 10l-9 6.2z" fill="currentColor"/></svg>
               </button>
@@ -221,7 +211,6 @@ function selectGame(id) {
   description.textContent = game.description;
   document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Start match';
   document.querySelector('#player-count-picker').hidden = game.id !== 'salubata';
-  document.querySelector('#player-count-picker').hidden = game.id !== 'salubata';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
     ? 'ARROWS TO MOVE · SPACE TO JUMP'
     : game.id === 'avatar-jump'
@@ -298,10 +287,6 @@ function startRun() {
       controller.setPlayerCount(salubataPlayerCount);
       document.querySelector('#player-count-picker').hidden = true;
     }
-    if (activeGame.id === 'salubata') {
-      controller.setPlayerCount(salubataPlayerCount);
-      document.querySelector('#player-count-picker').hidden = true;
-    }
     controller.start();
   } catch (error) {
     showToast('This browser could not start the 3D game. Try a browser with WebGL enabled.');
@@ -314,16 +299,6 @@ function returnHome() {
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
-document.querySelectorAll('[data-player-count]').forEach((button) => {
-  button.addEventListener('click', () => {
-    salubataPlayerCount = Number(button.dataset.playerCount);
-    document.querySelectorAll('[data-player-count]').forEach((option) => {
-      const selected = option === button;
-      option.classList.toggle('is-selected', selected);
-      option.setAttribute('aria-pressed', String(selected));
-    });
-  });
-});
 document.querySelectorAll('[data-player-count]').forEach((button) => {
   button.addEventListener('click', () => {
     salubataPlayerCount = Number(button.dataset.playerCount);
