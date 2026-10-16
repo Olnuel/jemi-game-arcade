@@ -77,7 +77,29 @@ async function askPlatform(message, replyType, timeoutMs = 3000) {
 async function checkStartNgUser() {
   if (!START_NG) return undefined;
   const reply = await askPlatform({ type: 'startng:whoami' }, 'startng:user');
-  return reply === undefined ? undefined : (reply.user ?? null);
+  // `user` is the signed-in player, `guest` is the shared look guests play with.
+  return reply === undefined ? undefined : (reply.user ?? reply.guest ?? null);
+}
+
+// Saves a finished run to the shared start.ng leaderboard. Guests cannot save, so this
+// resolves to null for them and the game keeps playing normally.
+export async function saveStartNgScore(stats) {
+  if (!START_NG) return null;
+  const clean = {};
+  for (const [key, value] of Object.entries(stats || {})) {
+    const whole = Math.round(Number(value));
+    if (Number.isFinite(whole)) clean[key] = Math.min(1_000_000_000, Math.max(0, whole));
+  }
+  if (!Object.keys(clean).length) return null;
+  const reply = await askPlatform({ type: 'startng:score', stats: clean }, 'startng:scoreSaved');
+  return reply && reply.ok ? reply : null;
+}
+
+// Reads the top runs so the menu can show the board. Works for guests too.
+export async function readStartNgLeaderboard(limit = 10) {
+  if (!START_NG) return [];
+  const reply = await askPlatform({ type: 'startng:leaderboard', limit }, 'startng:leaderboardData');
+  return reply && Array.isArray(reply.entries) ? reply.entries : [];
 }
 
 export async function readStartNgIdentity() {
@@ -85,14 +107,16 @@ export async function readStartNgIdentity() {
     return { status: 'unavailable', user: null, reason: 'Sign-in is available when the game is hosted on Start.ng.' };
   }
 
-  const user = await checkStartNgUser();
-  if (user === undefined) {
+  const reply = await askPlatform({ type: 'startng:whoami' }, 'startng:user');
+  if (reply === undefined) {
     return { status: 'unavailable', user: null, reason: 'Start.ng did not answer the sign-in check.' };
   }
+  const user = reply.user ?? null;
   return {
-    status: user ? 'connected' : 'signed-out',
+    status: user ? 'connected' : 'guest',
     user,
-    reason: user ? 'Connected to your Start.ng character.' : 'Sign in with Start.ng to use your saved character.',
+    signedIn: Boolean(user),
+    reason: user ? 'Connected to your Start.ng character.' : 'Playing as the Start.ng guest.',
   };
 }
 

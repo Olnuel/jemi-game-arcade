@@ -1,7 +1,9 @@
 import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
-import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
+import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { difficultyFor, recordDifficulty } from '../difficulty.js';
 
 const LANES = [-0.85, 0, 0.85];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -31,21 +33,17 @@ function createSlipper() {
 }
 
 export class Salubata {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
+    this.lighting = lighting;
+    this.difficulty = difficultyFor('salubata');
     this.state = 'menu';
     this.phase = 'backward-aim';
     this.turn = 1;
-    this.round = 1;
+    this.maxTurns = 4;
     this.score = 0;
     this.removed = 0;
-    this.players = [
-      { name: 'Player 1', score: 0, bands: 0 },
-      { name: 'Player 2', score: 0, bands: 0 },
-    ];
-    this.playerIndex = 0;
-    this.slidePlayerIndex = 0;
     this.walkElapsed = 0;
     this.elapsed = 0;
     this.bands = [];
@@ -53,8 +51,6 @@ export class Salubata {
     this.slipper = null;
     this.disposed = false;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#151e20');
-    this.scene.fog = new THREE.FogExp2('#151e20', 0.028);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 10, 16);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -81,19 +77,14 @@ export class Salubata {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#ffdfbd', '#362d27', 2.05));
-    const lamp = new THREE.DirectionalLight('#ffd39a', 2.6);
-    lamp.position.set(-4, 9, 5);
-    lamp.castShadow = true;
-    lamp.shadow.mapSize.set(1024, 1024);
-    this.scene.add(lamp);
+    applyLighting(this.scene, this.lighting);
 
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#292d29', roughness: 0.96 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#2e1f1c', roughness: 0.96 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.08, -2.5);
     ground.receiveShadow = true;
     this.scene.add(ground);
-    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#32312d', roughness: 0.9 }));
+    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#3a2620', roughness: 0.9 }));
     alley.rotation.x = -Math.PI / 2;
     alley.position.set(0, -0.03, -2.5);
     alley.receiveShadow = true;
@@ -125,7 +116,7 @@ export class Salubata {
     this.scene.add(this.targetRing);
     this.buildBands();
     this.character = createPlayerCharacter(style);
-    this.character.position.set(0, 0.55, 2.7);
+    this.character.position.set(0, FOOT_Y, 2.7);
     this.character.rotation.y = Math.PI;
     this.scene.add(this.character);
     this.playerShadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), new THREE.MeshBasicMaterial({ color: '#080b09', transparent: true, opacity: 0.38 }));
@@ -149,6 +140,14 @@ export class Salubata {
       this.scene.add(band);
       this.bands.push({ mesh: band, x, z, removed: false });
     });
+  }
+
+  /** Switches the time of day live, without rebuilding the street. */
+  setLighting(id) {
+    if (!LIGHT_PRESETS[id]) return;
+    this.lighting = id;
+    applyLighting(this.scene, id);
+    if (this.scene.fog) this.scene.fog.color.set(LIGHT_PRESETS[id].fog);
   }
 
   setStyle(style = PREVIEW_STYLE) { applyPlayerCharacterStyle(this.character, style); }
@@ -221,19 +220,38 @@ export class Salubata {
 
   start() {
     this.resetSlipper();
+    recordDifficulty('salubata', this.state);
+    this.difficulty = difficultyFor('salubata');
     this.state = 'running';
     this.phase = 'backward-aim';
     this.turn = 1;
-    this.round = 1;
     this.score = 0;
     this.removed = 0;
-    this.playerIndex = 0;
-    this.players.forEach((player) => { player.score = 0; player.bands = 0; });
     this.aim = 1;
     this.marker.visible = false;
     this.playerZ = 2.7;
     this.playerX = 0;
-    this.character.position.set(this.playerX, 0.55, this.playerZ);
+    this.character.position.set(this.playerX, FOOT_Y, this.playerZ);
+    this.bands.forEach((band) => { band.removed = false; band.mesh.visible = true; });
+    this.lastFrame = performance.now();
+    this.notify();
+  }
+
+  /** Full reset back to the selection screen, used by the shelf's Back to games. */
+  returnToMenu() {
+    this.resetSlipper();
+    this.state = 'menu';
+    this.phase = 'backward-aim';
+    this.turn = 1;
+    this.score = 0;
+    this.removed = 0;
+    this.aim = 1;
+    this.marker.visible = false;
+    this.playerZ = 2.7;
+    this.playerX = 0;
+    this.character.position.set(0, FOOT_Y, 2.7);
+    this.camera.position.set(0, 10, 16);
+    this.camera.lookAt(0, 0.8, 0);
     this.bands.forEach((band) => { band.removed = false; band.mesh.visible = true; });
     this.lastFrame = performance.now();
     this.notify();
@@ -255,7 +273,6 @@ export class Salubata {
   }
 
   throwSlide(power) {
-    this.slidePlayerIndex = this.playerIndex;
     this.phase = 'sliding';
     this.slidePower = power;
     this.slideSpeed = 7 + power * 7.1;
@@ -290,18 +307,16 @@ export class Salubata {
       this.notify();
       return;
     }
-    this.pendingPlayerIndex = (this.slidePlayerIndex + 1) % this.players.length;
-    this.state = 'handoff';
-    this.notify();
-  }
-
-  continueTurn() {
-    if (this.state !== 'handoff') return;
-    this.playerIndex = this.pendingPlayerIndex;
-    if (this.playerIndex === 0) this.round += 1;
-    this.turn = this.playerIndex + 1;
+    // Out of turns with bands left: the round is lost.
+    if (this.turn >= this.maxTurns) {
+      this.state = 'over';
+      sound.playGameOver();
+      this.notify();
+      return;
+    }
+    this.turn += 1;
     this.resetSlipper();
-    this.character.position.set(0, 0.55, 2.7);
+    this.character.position.set(0, FOOT_Y, 2.7);
     this.playerZ = 2.7;
     this.playerX = 0;
     this.aim = 1;
@@ -334,23 +349,20 @@ export class Salubata {
     } else if (this.state === 'running' && this.phase === 'sliding') {
       this.slidePrevZ = this.slipper.position.z;
       this.slipper.position.z += this.slipperVelocity.z * dt;
-      this.slideSpeed = Math.max(0, this.slideSpeed - 4.1 * dt);
+      this.slideSpeed = Math.max(0, this.slideSpeed - this.difficulty.saluDecel * dt);
       this.slipperVelocity.z = -this.slideSpeed;
       this.slipper.rotation.z = Math.sin(this.elapsed * 28) * 0.035;
       for (const band of this.bands) {
         if (band.removed) continue;
         const crossed = this.slidePrevZ >= band.z - 0.3 && this.slipper.position.z <= band.z + 0.3;
-        if (crossed && Math.abs(this.slipper.position.x - band.x) <= 0.54) {
+        if (crossed && Math.abs(this.slipper.position.x - band.x) <= this.difficulty.saluReach) {
           band.removed = true;
           band.mesh.visible = false;
           band.mesh.geometry.dispose();
           band.mesh.material.dispose();
           this.removed += 1;
           sound.playCoin();
-          const player = this.players[this.slidePlayerIndex];
-          player.bands += 1;
-          player.score += 100;
-          this.score = player.score;
+          this.score += 100;
           this.notify();
         }
       }
@@ -369,10 +381,8 @@ export class Salubata {
 
   notify() {
     const names = { 'backward-aim': 'Back throw', 'backward-flight': 'Throw airborne', 'slide-aim': 'Aim ground slide', sliding: 'Slipper sliding', 'turn-end': 'Turn complete' };
-    const player = this.players[this.state === 'handoff' ? this.pendingPlayerIndex : this.playerIndex];
-    const leader = this.players[0].bands === this.players[1].bands ? null : this.players[0].bands > this.players[1].bands ? this.players[0] : this.players[1];
-    const label = this.state === 'won' ? 'Circle cleared' : this.state === 'handoff' ? `Pass the phone to ${player.name}` : `${player.name} · ${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
-    const playerScores = `P1 ${this.players[0].bands} · P2 ${this.players[1].bands}`;
+    const label = this.state === 'won' ? 'Circle cleared' : `${names[this.phase] || 'Walk to mark'} · turn ${this.turn}/${this.maxTurns}`;
+    const progress = `${this.removed}/${this.bands.length} bands`;
     const instructions = this.phase === 'backward-aim'
       ? 'HOLD ↓ / SPACE'
       : this.phase === 'slide-aim'
@@ -386,20 +396,19 @@ export class Salubata {
               : '';
     this.onChange({
       state: this.state,
-      score: player.score,
-      coins: player.bands,
+      score: this.score,
+      coins: this.removed,
       best: 0,
-      lives: this.players.length,
-      turn: (this.state === 'handoff' ? this.pendingPlayerIndex : this.playerIndex) + 1,
-      maxTurns: this.players.length,
-      round: this.round,
+      lives: this.maxTurns - this.turn + 1,
+      turn: this.turn,
+      maxTurns: this.maxTurns,
       type: 'salubata',
       phase: this.phase,
       phaseLabel: label,
-      phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : this.state === 'handoff' ? `${player.name.toUpperCase()} UP NEXT · PASS THE PHONE THEN CONTINUE` : instructions,
-      resultTitle: this.state === 'won' ? (leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
-      resultBody: `${this.players[0].name}: ${this.players[0].bands} bands · ${this.players[1].name}: ${this.players[1].bands} bands`,
-      resultAction: 'Play another match',
+      phaseText: this.state === 'running' ? `${progress}  ·  ${instructions}` : instructions,
+      resultTitle: this.state === 'won' ? 'Street champion.' : 'Out of turns.',
+      resultBody: `${this.removed} bands cleared · ${this.score} points · ${this.turn}/${this.maxTurns} turns`,
+      resultAction: 'Play another round',
     });
   }
 

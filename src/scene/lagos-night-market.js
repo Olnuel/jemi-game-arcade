@@ -12,8 +12,8 @@ export function addMarketStall(scene, { x, y = 0, z, scale = 1, sign = 'LAGOS', 
   stall.position.set(x, y, z);
   stall.scale.setScalar(scale);
 
-  const wood = material('#523b31');
-  const darkWood = material('#302822');
+  const wood = material('#5c3a30');
+  const darkWood = material('#2e1f1c');
   const canvas = material(accent, 0.75, accent, 0.18);
   const counter = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.62, 0.72), wood);
   counter.position.y = 0.47;
@@ -46,7 +46,7 @@ export function addMarketStall(scene, { x, y = 0, z, scale = 1, sign = 'LAGOS', 
     stall.add(fruit);
   }
 
-  const board = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.34, 0.08), material('#163a37', 0.52, '#26b9a0', 0.45));
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.34, 0.08), material('#0b3d2c', 0.52, '#00d98a', 0.45));
   board.position.set(0, 1.62, 0.41);
   stall.add(board);
   const label = makeLabel(sign, '#f6d49b');
@@ -73,12 +73,12 @@ export function addStringLights(scene, { start = [-5, 4.1, -3], end = [5, 4.1, -
     const t = index / 12;
     points.push(from.clone().lerp(to, t).add(new THREE.Vector3(0, -Math.sin(t * Math.PI) * 0.7, 0)));
   }
-  const wire = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, 0.018, 5, false), material('#453a31'));
+  const wire = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, 0.018, 5, false), material('#4a3428'));
   scene.add(wire);
   for (let index = 0; index < count; index += 1) {
     const t = (index + 0.5) / count;
     const point = from.clone().lerp(to, t).add(new THREE.Vector3(0, -Math.sin(t * Math.PI) * 0.7 - 0.09, 0));
-    const color = index % 3 === 1 ? '#55dcc5' : index % 3 === 2 ? '#f5cf72' : '#ff9a51';
+    const color = index % 3 === 1 ? '#2ee08a' : index % 3 === 2 ? '#f5cf72' : '#ff9a51';
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 9, 7), new THREE.MeshBasicMaterial({ color }));
     bulb.position.copy(point);
     scene.add(bulb);

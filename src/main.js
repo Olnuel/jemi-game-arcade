@@ -1,8 +1,11 @@
 import { IdentityDash } from './games/identity-dash.js';
 import { AvatarJump } from './games/avatar-jump.js';
 import { Salubata } from './games/salubata.js';
-import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, START_NG, startNgSignIn } from './identity/startng.js';
-import { PREVIEW_STYLE } from './identity/player-character.js';
+import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, saveStartNgScore, readStartNgLeaderboard, START_NG, startNgSignIn } from './identity/startng.js';
+import { PREVIEW_STYLE, bodyOptions, readBodyOverride, writeBodyOverride } from './identity/player-character.js';
+import { lightPresets, readLighting, writeLighting } from './scene/sky.js';
+import { speakResult, readVoiceEnabled, writeVoiceEnabled, voiceSupported } from './audio/voice.js';
+import { BADGES, earnedBadges, recordResult, rewardSummary } from './rewards.js';
 
 const games = [
   {
@@ -25,7 +28,7 @@ const games = [
     id: 'salubata',
     title: 'Salubata',
     meta: 'STREET GAME · PLAY NOW',
-    description: 'Pass the phone, throw your slipper behind you, then slide it at the rubber bands. Most bands wins.',
+    description: 'Throw your slipper behind you to set the mark, then slide it through the rubber bands.',
     number: 'C',
     playable: true,
   },
@@ -36,12 +39,16 @@ const app = document.querySelector('#app');
 app.innerHTML = `
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#home" aria-label="Start.ng Arcade home">
+      <a class="brand" href="#home" aria-label="Jemi Game Arcade home">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span>START.NG <b>ARCADE</b></span>
+        <span>JEMI <b>GAME ARCADE</b></span>
       </a>
       <div class="topbar-right">
         <a class="text-link" href="https://start.ng" target="_blank" rel="noreferrer">Start.ng</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" title="Switch between light and dark">
+          <span class="theme-toggle-mark" id="theme-mark" aria-hidden="true">☾</span>
+          <span id="theme-label">Dark</span>
+        </button>
         <a class="identity-chip" id="identity-link" href="https://start.ng/" title="Open Start.ng">
           <span class="status-dot" id="identity-dot"></span>
           <span id="identity-label">${START_NG ? 'CHECKING START.NG' : 'VISITOR PREVIEW'}</span>
@@ -100,6 +107,23 @@ app.innerHTML = `
           </div>
           <p class="profile-note" id="profile-note">${START_NG ? 'Checking your centrally managed Start.ng character…' : 'Your Start.ng character styling appears when the game is hosted on your Start.ng address.'}</p>
         </div>
+        <div class="body-panel">
+          <div class="panel-heading"><span>CHARACTER BODY</span><span id="body-hint">Following your Start.ng look</span></div>
+          <div class="body-options" id="body-options" role="group" aria-label="Character body"></div>
+        </div>
+        <div class="lighting-panel">
+          <div class="panel-heading"><span>TIME OF DAY</span><span id="lighting-hint">Lagos dusk</span></div>
+          <div class="lighting-options" id="lighting-options" role="group" aria-label="Time of day"></div>
+        </div>
+        <div class="rewards-panel">
+          <div class="panel-heading"><span>REWARDS</span><span id="rewards-count">0/6</span></div>
+          <ul class="rewards-list" id="rewards-list"></ul>
+          <label class="voice-toggle"><input type="checkbox" id="voice-toggle" /><span>Voice cheers</span></label>
+        </div>
+        <div class="leaderboard-panel" id="leaderboard-panel" hidden>
+          <div class="panel-heading"><span>START.NG TOP RUNS</span><span aria-hidden="true">★</span></div>
+          <ol class="leaderboard-list" id="leaderboard-list"></ol>
+        </div>
         <div class="controls-note"><span class="keyboard-icon" aria-hidden="true">⌘</span><p>Use the arrow keys and spacebar, or swipe across the road.</p></div>
         <footer class="shelf-footer"><span>MADE FOR THE PLAYERS</span><span>NG · 001</span></footer>
       </aside>
@@ -125,10 +149,152 @@ let toastTimer;
 let frameState = 'menu';
 let currentUser = null;
 let currentStyle = PREVIEW_STYLE;
+let scoreSent = false;
+let signedIn = false;
+let platformStyle = PREVIEW_STYLE;
+let bodyOverride = readBodyOverride();
 
-function applyIdentity(user) {
+// The player's own body choice wins over the account's, so they can change body
+// without losing the colours Start.ng manages for them.
+function resolveStyle() {
+  const base = platformStyle || PREVIEW_STYLE;
+  return bodyOverride ? { ...base, body: bodyOverride } : base;
+}
+
+function setBody(id) {
+  bodyOverride = id;
+  writeBodyOverride(id);
+  currentStyle = resolveStyle();
+  controller?.setStyle(currentStyle);
+  renderBodyOptions(id);
+}
+
+function renderBodyOptions(selected = bodyOverride) {
+  const host = document.querySelector('#body-options');
+  if (!host) return;
+  host.innerHTML = bodyOptions()
+    .map((option) => `<button type="button" class="body-option" data-body="${option.id}" aria-pressed="${option.id === selected}">${option.label}</button>`)
+    .join('');
+  const hint = document.querySelector('#body-hint');
+  if (hint) hint.textContent = selected ? 'Your choice, remembered here' : 'Following your Start.ng look';
+}
+
+// Daylight / evening / night, applied to whichever game is loaded without restarting it.
+function setLighting(id) {
+  writeLighting(id);
+  controller?.setLighting?.(id);
+  renderLightingOptions(id);
+}
+
+function renderLightingOptions(selected = readLighting()) {
+  const host = document.querySelector('#lighting-options');
+  if (!host) return;
+  const presets = lightPresets();
+  host.innerHTML = presets
+    .map((p) => `<button type="button" class="lighting-option" data-light="${p.id}" aria-pressed="${p.id === selected}"><i class="lighting-swatch lighting-swatch--${p.id}" aria-hidden="true"></i>${p.label}</button>`)
+    .join('');
+  const hint = document.querySelector('#lighting-hint');
+  if (hint) hint.textContent = presets.find((p) => p.id === selected)?.hint || '';
+}
+
+function renderRewards() {
+  const host = document.querySelector('#rewards-list');
+  if (!host) return;
+  const { earned } = rewardSummary();
+  host.innerHTML = BADGES.map((badge) => {
+    const got = earned.has(badge.id);
+    return `<li class="reward${got ? ' is-earned' : ''}"${got ? '' : ` title="${badge.hint}"`}>
+      <span class="reward-mark" aria-hidden="true">${got ? '★' : '☆'}</span>
+      <b>${badge.label}</b><small>${badge.hint}</small>
+    </li>`;
+  }).join('');
+  const counter = document.querySelector('#rewards-count');
+  if (counter) counter.textContent = `${earned.size}/${BADGES.length}`;
+}
+
+async function refreshLeaderboard() {
+  const panel = document.querySelector('#leaderboard-panel');
+  const board = document.querySelector('#leaderboard-list');
+  if (!board) return;
+  // Always visible so the board is discoverable; off-platform it explains itself.
+  panel.hidden = false;
+  if (!START_NG) {
+    board.innerHTML = '<li class="leaderboard-empty">Live on your Start.ng address. Signed-in players score here.</li>';
+    return;
+  }
+  try {
+    const entries = await readStartNgLeaderboard(5);
+    if (!entries.length) {
+      board.innerHTML = '<li class="leaderboard-empty">No runs saved yet. Sign in and be the first.</li>';
+      return;
+    }
+    board.innerHTML = entries
+      .map((entry) => `<li${entry.player_id && currentUser && entry.player_id === currentUser.id ? ' class="is-you"' : ''}><span>${entry.rank}</span><b>${entry.name}</b><i>${entry.stats?.score ?? entry.score}</i></li>`)
+      .join('');
+  } catch {
+    board.innerHTML = '<li class="leaderboard-empty">Leaderboard unavailable.</li>';
+  }
+}
+
+// A finished run speaks, scores and pays out.
+function finishRun(state) {
+  scoreSent = true;
+  const outcome = state.state === 'won' ? 'won' : 'lost';
+  const fresh = recordResult(activeGame.id, outcome);
+  speakResult(activeGame.id, outcome);
+  renderRewards();
+  if (fresh.length) {
+    const names = fresh.map((id) => BADGES.find((badge) => badge.id === id)?.label).filter(Boolean);
+    showToast(`Reward unlocked: ${names.join(', ')}`);
+  }
+  publishRunScore(state);
+}
+
+// Pushes a finished run to the shared start.ng leaderboard. Only signed-in players
+// can save; guests and local previews quietly skip it.
+async function publishRunScore(state) {
+  if (!START_NG) return;
+  try {
+    const result = await saveStartNgScore({
+      score: state.score || 0,
+      stars: state.coins || 0,
+      coins: state.coins || 0,
+    });
+    if (result?.result) {
+      const rank = result.result.rank;
+      showToast(result.result.improved && rank ? `New personal best on Start.ng - you are #${rank}!` : 'Run saved to your Start.ng leaderboard.');
+    }
+  } catch {
+    // A failed score save must never interrupt play.
+  }
+  refreshLeaderboard();
+}
+
+// Light/dark shell theme, independent of the in-game time of day.
+function renderTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  const toggle = document.querySelector('#theme-toggle');
+  if (!toggle) return;
+  const light = theme === 'light';
+  toggle.setAttribute('aria-pressed', String(light));
+  const mark = document.querySelector('#theme-mark');
+  const label = document.querySelector('#theme-label');
+  if (mark) mark.textContent = light ? '☀' : '☾';
+  if (label) label.textContent = light ? 'Light' : 'Dark';
+}
+
+function setTheme(theme) {
+  const next = theme === 'light' ? 'light' : 'dark';
+  try { localStorage.setItem('arcade:theme', next); } catch { /* storage unavailable */ }
+  renderTheme(next);
+}
+
+function applyIdentity(user, isSignedIn = true) {
   currentUser = user;
-  currentStyle = user ? mapStartNgStyle(user) : PREVIEW_STYLE;
+  signedIn = Boolean(user) && isSignedIn;
+  platformStyle = user ? mapStartNgStyle(user) : PREVIEW_STYLE;
+  currentStyle = resolveStyle();
   controller?.setStyle(currentStyle);
 
   const name = currentStyle.name;
@@ -141,18 +307,21 @@ function applyIdentity(user) {
   const headerAvatar = document.querySelector('#header-avatar');
   const panel = document.querySelector('.profile-panel');
 
+  const isGuest = Boolean(user) && !signedIn;
   profileName.textContent = name;
-  profileState.textContent = user ? 'Start.ng profile · synced' : START_NG ? 'Guest player' : 'Style preview';
-  profileNote.textContent = user
+  profileState.textContent = isGuest ? 'Start.ng guest · not signed in' : user ? 'Start.ng profile · synced' : START_NG ? 'Guest player' : 'Style preview';
+  profileNote.textContent = user && !isGuest
     ? `Your saved Start.ng character is active in ${activeGame.title}.`
-    : START_NG
-      ? 'Sign in with Start.ng to bring your saved character into the run.'
-      : 'Your Start.ng character appears here when this game is hosted on its Start.ng address.';
-  identityLabel.textContent = user ? `${name.toUpperCase()} · START.NG` : START_NG ? 'SIGN IN WITH START.NG' : 'VISITOR PREVIEW';
-  identityDot.classList.toggle('is-connected', Boolean(user));
+    : isGuest
+      ? 'Playing as the Start.ng guest. Sign in to save your runs to the leaderboard.'
+      : START_NG
+        ? 'Sign in with Start.ng to bring your saved character into the run.'
+        : 'Your Start.ng character appears here when this game is hosted on its Start.ng address.';
+  identityLabel.textContent = user && !isGuest ? `${name.toUpperCase()} · START.NG` : START_NG ? 'SIGN IN WITH START.NG' : 'VISITOR PREVIEW';
+  identityDot.classList.toggle('is-connected', Boolean(user) && !isGuest);
   identityDot.classList.toggle('is-checking', !user && START_NG);
   headerAvatar.textContent = name.slice(0, 1).toUpperCase();
-  identityLink.title = user ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
+  identityLink.title = user && !isGuest ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
   panel.style.setProperty('--character-skin', currentStyle.skinColor);
   panel.style.setProperty('--character-hair', currentStyle.hairColor);
   panel.style.setProperty('--character-top', currentStyle.primaryColor);
@@ -198,7 +367,7 @@ function selectGame(id) {
   const firstWord = words.shift();
   title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
-  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Pass the phone';
+  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Take your turn';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
     ? 'ARROWS TO MOVE · SPACE TO JUMP'
     : game.id === 'avatar-jump'
@@ -221,7 +390,7 @@ function selectGame(id) {
 
 function createController() {
   const Game = { 'identity-dash': IdentityDash, 'avatar-jump': AvatarJump, salubata: Salubata }[activeGame.id];
-  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI });
+  controller = new Game(canvas, { style: currentStyle, lighting: readLighting(), onChange: updateRunUI });
 }
 
 function updateRunUI(state) {
@@ -236,8 +405,8 @@ function updateRunUI(state) {
   document.querySelector('#coin-value').textContent = state.coins;
   document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
   document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
-  document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND · PLAYER' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
-  document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1} · P${state.turn || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  document.querySelector('#hud-life-label').textContent = isSalubata ? 'TURN' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
+  document.querySelector('#life-value').textContent = isSalubata ? `${state.turn || 1}/${state.maxTurns || 4}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
   document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
@@ -250,7 +419,6 @@ function updateRunUI(state) {
 
   const labels = {
     paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
-    handoff: `<strong>Pass the phone to Player ${state.turn || 2}</strong><span>${state.phaseLabel || 'Next player up'} · ${state.resultBody || ''}</span><button type="button" data-action="continue">Ready, Player ${state.turn || 2}</button>`,
     over: `<strong>${state.resultTitle || 'Good game.'}</strong><span>${state.resultBody || `${state.score} metres · ${state.coins} coins`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
     won: `<strong>${state.resultTitle || 'You made it.'}</strong><span>${state.resultBody || `${state.score} points`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
   };
@@ -258,20 +426,21 @@ function updateRunUI(state) {
     message.innerHTML = labels[state.state];
     message.hidden = false;
     message.querySelector('[data-action="resume"]')?.addEventListener('click', () => controller.resume());
-    message.querySelector('[data-action="continue"]')?.addEventListener('click', () => controller.continueTurn());
-    message.querySelector('[data-action="restart"]')?.addEventListener('click', () => controller.start());
+    message.querySelector('[data-action="restart"]')?.addEventListener('click', startRun);
     message.querySelector('[data-action="home"]')?.addEventListener('click', returnHome);
   } else {
     message.hidden = true;
     message.innerHTML = '';
   }
+  if ((state.state === 'won' || state.state === 'over') && !scoreSent) finishRun(state);
   document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS AFTER DARK' : activeGame.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   if (state.phaseText) document.querySelector('.scene-footnote span:first-child').textContent = state.phaseText.toUpperCase();
   else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'THREE LANES. ONE GOOD RUN.';
-  if (state.turn && !isSalubata) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
+  if (state.turn) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
 }
 
 function startRun() {
+  scoreSent = false;
   try {
     controller.start();
   } catch (error) {
@@ -281,7 +450,9 @@ function startRun() {
 }
 
 function returnHome() {
-  if (controller) controller.state = 'menu';
+  scoreSent = false;
+  if (controller?.returnToMenu) controller.returnToMenu();
+  else if (controller) controller.state = 'menu';
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
@@ -306,12 +477,37 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
     if (!controller) return;
     if (button.dataset.action === 'jump') controller.jump();
     else if (button.dataset.action === 'throw') controller.throwAction();
-    else if (button.dataset.action === 'continue') controller.continueTurn?.();
     else controller.move(button.dataset.action === 'left' ? -1 : 1);
   });
 });
 renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
+renderLightingOptions();
+renderBodyOptions();
+renderRewards();
+try { renderTheme(localStorage.getItem('arcade:theme') === 'light' ? 'light' : 'dark'); }
+catch { renderTheme('dark'); }
+document.querySelector('#theme-toggle').addEventListener('click', () => {
+  setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+});
+const voiceToggle = document.querySelector('#voice-toggle');
+if (voiceToggle) {
+  voiceToggle.checked = readVoiceEnabled();
+  voiceToggle.disabled = !voiceSupported();
+  voiceToggle.closest('.voice-toggle')?.classList.toggle('is-unsupported', !voiceSupported());
+  voiceToggle.addEventListener('change', () => writeVoiceEnabled(voiceToggle.checked));
+}
+document.querySelector('#lighting-options').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-light]');
+  if (button) setLighting(button.dataset.light);
+});
+document.querySelector('#body-options').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-body]');
+  if (!button) return;
+  const next = button.dataset.body;
+  // Clicking the active option clears the override and follows the Start.ng look.
+  setBody(next === bodyOverride ? null : next);
+});
 document.querySelector('#best-value').textContent = String(Number(localStorage.getItem('arcade:identity-dash:best') || 0)).padStart(3, '0');
 try {
   createController();
@@ -322,13 +518,18 @@ try {
 }
 
 readStartNgIdentity().then((identity) => {
-  applyIdentity(identity.user);
+  applyIdentity(identity.user, identity.signedIn);
   if (identity.status === 'unavailable' && START_NG) {
     document.querySelector('#profile-note').textContent = 'Start.ng sign-in could not be checked. Reload this game to try again.';
   }
+  refreshLeaderboard();
 }).catch((error) => {
   console.warn('Start.ng sign-in check failed.', error);
+  refreshLeaderboard();
 });
-onStartNgUserChange(applyIdentity);
+onStartNgUserChange((user) => {
+  applyIdentity(user, Boolean(user));
+  refreshLeaderboard();
+});
 
 window.addEventListener('pagehide', () => controller?.dispose(), { once: true });

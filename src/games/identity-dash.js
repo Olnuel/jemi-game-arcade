@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights } from '../scene/lagos-night-market.js';
+import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { difficultyFor, recordDifficulty } from '../difficulty.js';
 import { sound } from '../audio/sound.js';
 
 const LANES = [-1.55, 0, 1.55];
@@ -134,7 +136,7 @@ function createCoinMesh() {
 }
 
 export class IdentityDash {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
     this.state = 'menu';
@@ -148,17 +150,17 @@ export class IdentityDash {
     this.targetLane = 1;
     this.jumpTime = 0;
     this.elapsed = 0;
-    this.speed = 8;
+    this.difficulty = difficultyFor('identity-dash');
+    this.speed = this.difficulty.dashSpeed;
     this.spawnTimer = 0.7;
     this.hitCooldown = 0;
     this.shake = 0;
     this.items = [];
     this.roadMarks = [];
+    this.lighting = lighting;
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#121b21');
-    this.scene.fog = new THREE.FogExp2('#17232a', 0.017);
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
@@ -186,23 +188,23 @@ export class IdentityDash {
   }
 
   buildScene(style) {
-    const ambient = new THREE.HemisphereLight('#d8eaff', '#533528', 2.15);
-    this.scene.add(ambient);
-    const moon = new THREE.DirectionalLight('#fff0c9', 2.2);
-    moon.position.set(-4, 8, 5);
-    moon.castShadow = true;
-    moon.shadow.mapSize.set(1024, 1024);
-    this.scene.add(moon);
-    const signLight = new THREE.PointLight('#ef7740', 34, 16, 2);
-    signLight.position.set(3.2, 2.4, -4);
-    this.scene.add(signLight);
-    const tealLight = new THREE.PointLight('#33d5bf', 20, 15, 2);
-    tealLight.position.set(-3.8, 2.8, -9);
-    this.scene.add(tealLight);
+    applyLighting(this.scene, this.lighting);
+
+    // Street glow: ember signage and Nigerian green. Carries the night.
+    this.washes = [];
+    const addWash = (color, intensity, x, y, z, distance) => {
+      const light = new THREE.PointLight(color, intensity, distance, 2);
+      light.position.set(x, y, z);
+      this.scene.add(light);
+      this.washes.push({ light, base: intensity });
+      return light;
+    };
+    addWash('#ff5722', 34, 3.2, 2.4, -4, 16);
+    addWash('#00d98a', 20, -3.8, 2.8, -9, 15);
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(80, 90),
-      new THREE.MeshStandardMaterial({ color: '#242728', roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: '#2a1c1a', roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.06, -29);
@@ -211,7 +213,7 @@ export class IdentityDash {
 
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(5.9, 90),
-      new THREE.MeshStandardMaterial({ color: '#292d2e', roughness: 0.86 }),
+      new THREE.MeshStandardMaterial({ color: '#33211d', roughness: 0.86 }),
     );
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, -0.025, -29);
@@ -237,7 +239,9 @@ export class IdentityDash {
     this.createStreet();
     addStringLights(this.scene, { start: [-4.5, 4.8, 1], end: [4.5, 4.8, -10], count: 12 });
     this.character = createPlayerCharacter(style);
-    this.character.position.set(0, 0, 2.15);
+    this.character.position.set(0, FOOT_Y, 2.15);
+    // The runner heads away from the camera toward the coins, so face it down the road.
+    this.character.rotation.y = Math.PI;
     this.scene.add(this.character);
     this.playerShadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.5, 24),
@@ -308,6 +312,16 @@ export class IdentityDash {
     }
   }
 
+  /** Switches the time of day live, without rebuilding the street. */
+  setLighting(id) {
+    if (!LIGHT_PRESETS[id]) return;
+    this.lighting = id;
+    applyLighting(this.scene, id);
+    if (this.scene.fog) this.scene.fog.color.set(LIGHT_PRESETS[id].fog);
+    const boost = id === 'night' ? 1.35 : id === 'evening' ? 1.1 : 0.55;
+    this.washes?.forEach(({ light, base }) => { light.intensity = base * boost; });
+  }
+
   setStyle(style = PREVIEW_STYLE) {
     applyPlayerCharacterStyle(this.character, style);
   }
@@ -368,7 +382,7 @@ export class IdentityDash {
     const primaryLane = randomLane();
 
     // At higher speeds, occasionally spawn 2 obstacles, but guarantee at least one lane is safe or jumpable
-    const spawnDouble = this.speed > 11.5 && Math.random() < 0.38;
+    const spawnDouble = this.speed > 9.5 + this.difficulty.dashSpeed && Math.random() < 0.38;
     const lanesToSpawn = [primaryLane];
     if (spawnDouble) {
       const secondLane = (primaryLane + (Math.random() < 0.5 ? 1 : 2)) % 3;
@@ -402,6 +416,10 @@ export class IdentityDash {
 
   start() {
     this.clearItems();
+    // Score the run that just ended before resetting, so difficulty follows the
+    // previous result rather than always counting this run as a loss.
+    recordDifficulty('identity-dash', this.state);
+    this.difficulty = difficultyFor('identity-dash');
     this.state = 'running';
     this.score = 0;
     this.coins = 0;
@@ -410,7 +428,7 @@ export class IdentityDash {
     this.targetLane = 1;
     this.jumpTime = 0;
     this.elapsed = 0;
-    this.speed = 8;
+    this.speed = this.difficulty.dashSpeed;
     this.spawnTimer = 0.5;
     this.hitCooldown = 0;
     this.shake = 0;
@@ -425,7 +443,7 @@ export class IdentityDash {
     this.lane = 1;
     this.targetLane = 1;
     this.jumpTime = 0;
-    this.character.position.set(0, 0, 2.15);
+    this.character.position.set(0, FOOT_Y, 2.15);
     this.character.visible = true;
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
@@ -512,12 +530,12 @@ export class IdentityDash {
       if (mark.position.z > 5) mark.position.z -= 67.2;
     }
     if (running) {
-      this.speed = Math.min(18.5, this.speed + dt * 0.11);
+      this.speed = Math.min(18.5, this.speed + dt * this.difficulty.dashRamp);
       this.score += dt * this.speed * 2.2;
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         this.spawnObstacleRow();
-        this.spawnTimer = Math.max(0.88, 1.45 - (this.speed - 8) * 0.045) + Math.random() * 0.28;
+        this.spawnTimer = Math.max(0.72, this.difficulty.dashSpawn - (this.speed - this.difficulty.dashSpeed) * 0.045) + Math.random() * 0.28;
       }
     }
 
