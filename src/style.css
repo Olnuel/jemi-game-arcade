@@ -342,3 +342,51 @@ h1 em { color: #ffd447; }
   .scene-wrap { border-radius: 14px; }
   .scene-copy { background: linear-gradient(90deg, #09203b75, transparent); }
 }
+
+
+/* Sunshine Lagos art direction — bright, playful, readable across all three games. */
+:root {
+  color-scheme: light; --ground:#fff5d9; --panel:#fffdf4; --panel-light:#ffedb5;
+  --line:#f0c65b; --ink:#17304b; --muted:#47617b; --dim:#6f8294;
+  --mint:#00a878; --orange:#f15b2a; --gold:#ffca05;
+}
+body { background:#fff5d9; color:#17304b; }
+.app-shell {
+ background:radial-gradient(ellipse at 84% 4%,#ffe16a 0%,transparent 30%),radial-gradient(ellipse at 4% 40%,#8de5d0 0%,transparent 32%),linear-gradient(135deg,#fff8e7 0%,#ffedb5 48%,#f9d77a 100%);
+}
+.topbar { border-bottom:2px solid #f0c65b; }
+.brand { color:#17304b; } .brand b { color:#ed5a2a; }
+.brand-mark i { background:linear-gradient(180deg,#00a878,#ffca05); }
+.text-link { color:#24415e; text-decoration-color:#ed9d32; }
+.identity-chip { color:#17304b; border-color:#e7bd49; background:#fffdf0e8; }
+.profile-avatar { background:#ffca05; color:#17304b; }
+.scene-wrap { border:3px solid #fffdf4; border-radius:24px; background:linear-gradient(140deg,#54c9f2,#ffd94f 60%,#f46c37); box-shadow:0 22px 0 #e9b93c,0 30px 65px #8b642d40; }
+.scene-vignette { background:linear-gradient(90deg,#08385ab8 0%,#08385a78 28%,#08385a18 61%,transparent 100%),linear-gradient(0deg,#073253a6 0%,transparent 30%,transparent 72%,#07325324 100%); }
+.scene-topline,.scene-footnote { color:#fffdf4; text-shadow:0 2px 10px #17304b75; }
+.scene-rule { background:#fffdf49c; } .scene-index { color:#fffdf4; }
+.street-sign { border:3px solid #fffdf4; border-radius:14px; background:linear-gradient(145deg,#ffdf37,#ff8d37); color:#17304b; box-shadow:0 10px 0 #e65b2b,0 16px 30px #07325340; }
+h1 { color:#fffdf4; text-shadow:0 4px 18px #0732537d; } h1 em { color:#ffdf37; }
+.feature-text>p,.key-hint { color:#fffdf4; text-shadow:0 2px 10px #07325388; }
+.play-button { border:2px solid #fffdf4; border-radius:14px; background:linear-gradient(100deg,#ffdf37,#ffb92e); color:#17304b; box-shadow:0 6px 0 #d94c23,0 12px 26px #07325338; }
+.play-button:hover { background:linear-gradient(100deg,#fff28b,#ffdf37); }
+.hud { background:#fff9e9f2; color:#17304b; border-bottom:2px solid #f0c65b; box-shadow:0 8px 28px #07325322; }
+.hud-score span,.hud-stat small,.feature-best span { color:#47617b; }
+.pause-button { background:#ffdf37; color:#17304b; border:2px solid #fffdf4; }
+.game-message { color:#17304b; background:#fff9eefa; border:2px solid #f0c65b; border-radius:22px; box-shadow:0 18px 45px #07325330; }
+.game-message span { color:#47617b; } .game-message button { border-radius:12px; background:linear-gradient(100deg,#ffdf37,#ffb92e); color:#17304b; box-shadow:0 4px 0 #d94c23; }
+.game-message .message-secondary { background:#d9f7ef; box-shadow:none; }
+.game-shelf { color:#17304b; } .shelf-heading { border-bottom-color:#e9c454; } .shelf-heading h2 { color:#17304b; }
+.shelf-heading>span,.game-row-text small,.panel-heading,.profile-state,.profile-note,.controls-note p,.shelf-footer { color:#526b81; }
+.game-row { border-bottom:1px solid #e8c85c; color:#17304b; }
+.game-row:hover,.game-row.is-selected { background:linear-gradient(100deg,#d9f7ef,#fff1ad); }
+.game-row.is-selected { box-shadow:inset 5px 0 #f15b2a; }
+.game-letter { border-color:#e6bd4d; color:#ed5a2a; background:#fff9e9; }
+.game-row.is-selected .game-letter { border-color:#ed5a2a; color:#ed5a2a; background:#fffdf4; }
+.game-row-arrow { color:#ed5a2a; }
+.profile-panel { border:2px solid #edcf6c; border-radius:18px; background:#fffdf4d9; box-shadow:0 10px 25px #ad80241c; }
+.controls-note { background:#d9f7ef; border:1px solid #9ce4d1; border-radius:14px; }
+.keyboard-icon { border-color:#00a878; color:#008c66; background:#fffdf4; }
+.feature-foot { border-color:#e9c454; color:#24415e; } .feature-caption { color:#24415e; } .feature-best strong { color:#ed5a2a; }
+.toast { color:#17304b; background:#fffdf4; border:2px solid #f0c65b; border-radius:14px; box-shadow:0 10px 35px #0732532a; }
+.touch-controls button { background:#ffdf37ef; color:#17304b; border:2px solid #fffdf4; box-shadow:0 4px 0 #e65b2b; }
+@media(max-width:700px){.scene-wrap{border-radius:18px;box-shadow:0 12px 0 #e9b93c,0 18px 40px #8b642d30}.scene-copy{background:linear-gradient(90deg,#0732535e,transparent)}}
