@@ -1,4 +1,3 @@
-import { sound } from './audio/sound.js';
 import { IdentityDash } from './games/identity-dash.js';
 import { AvatarJump } from './games/avatar-jump.js';
 import { Salubata } from './games/salubata.js';
@@ -72,12 +71,7 @@ app.innerHTML = `
             <div class="hud-score"><span id="hud-score-label">DISTANCE</span><strong id="score-value">000</strong><small id="score-unit">m</small></div>
             <div class="hud-stat"><span class="coin-mark" aria-hidden="true">₦</span><span id="coin-value">0</span><small id="collectible-label">COINS</small></div>
             <div class="hud-stat life-stat"><span id="hud-life-label">RUNS</span><strong id="life-value">● ● ●</strong></div>
-          <div class="hud-actions">
-            <button class="sound-button" id="sound-button" type="button" aria-label="Toggle sound">
-              <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M9.5 4.5 5 8H2v4h3l4.5 3.5V4.5zM14 7a4.5 4.5 0 0 1 0 6M16 4.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
-          </div>
+          <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
           </div>
           <div class="game-message" id="game-message" hidden aria-live="assertive"></div>
           <div class="touch-controls" aria-label="Touch game controls">
@@ -131,14 +125,13 @@ let toastTimer;
 let frameState = 'menu';
 let currentUser = null;
 let currentStyle = PREVIEW_STYLE;
-let lastPauseState = null;
 
 function applyIdentity(user) {
   currentUser = user;
-  currentStyle = (user && mapStartNgStyle(user)) || PREVIEW_STYLE;
+  currentStyle = user ? mapStartNgStyle(user) : PREVIEW_STYLE;
   controller?.setStyle(currentStyle);
 
-  const name = currentStyle.name || PREVIEW_STYLE.name;
+  const name = currentStyle.name;
   const profileName = document.querySelector('#player-name');
   const profileState = document.querySelector('#profile-state');
   const profileNote = document.querySelector('#profile-note');
@@ -160,10 +153,10 @@ function applyIdentity(user) {
   identityDot.classList.toggle('is-checking', !user && START_NG);
   headerAvatar.textContent = name.slice(0, 1).toUpperCase();
   identityLink.title = user ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
-  panel.style.setProperty('--character-skin', currentStyle.skinColor || PREVIEW_STYLE.skinColor);
-  panel.style.setProperty('--character-hair', currentStyle.hairColor || PREVIEW_STYLE.hairColor);
-  panel.style.setProperty('--character-top', currentStyle.primaryColor || PREVIEW_STYLE.primaryColor);
-  panel.style.setProperty('--character-bottoms', currentStyle.secondaryColor || PREVIEW_STYLE.secondaryColor);
+  panel.style.setProperty('--character-skin', currentStyle.skinColor);
+  panel.style.setProperty('--character-hair', currentStyle.hairColor);
+  panel.style.setProperty('--character-top', currentStyle.primaryColor);
+  panel.style.setProperty('--character-bottoms', currentStyle.secondaryColor);
 }
 
 function handleIdentityLink(event) {
@@ -242,34 +235,21 @@ function updateRunUI(state) {
   document.querySelector('#collectible-label').textContent = activeGame.id === 'avatar-jump' ? 'STARS' : isSalubata ? 'BANDS' : 'COINS';
   document.querySelector('#coin-value').textContent = state.coins;
   document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
-  const bestLabel = document.querySelector('.feature-best span');
-  const bestValue = document.querySelector('#best-value');
-  if (isSalubata) {
-    bestLabel.textContent = 'MATCH LEADER';
-    const p1 = controller?.players?.[0]?.bands || 0;
-    const p2 = controller?.players?.[1]?.bands || 0;
-    bestValue.textContent = p1 === p2 ? 'TIED' : p1 > p2 ? 'P1' : 'P2';
-  } else {
-    bestLabel.textContent = 'PERSONAL BEST';
-    bestValue.textContent = String(state.best).padStart(3, '0');
-  }
+  document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
   document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND · PLAYER' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
   document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1} · P${state.turn || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
   document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
-  if (lastPauseState !== state.state) {
-    lastPauseState = state.state;
-    pauseButton.hidden = !['running', 'paused'].includes(state.state);
-    pauseButton.setAttribute('aria-label', state.state === 'paused' ? 'Resume run' : 'Pause run');
-    pauseButton.classList.toggle('is-resume', state.state === 'paused');
-    pauseButton.innerHTML = state.state === 'paused'
-      ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 4.5 8 5.5-8 5.5z" /></svg>'
-      : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg>';
-  }
+  pauseButton.hidden = !['running', 'paused'].includes(state.state);
+  pauseButton.setAttribute('aria-label', state.state === 'paused' ? 'Resume run' : 'Pause run');
+  pauseButton.classList.toggle('is-resume', state.state === 'paused');
+  pauseButton.innerHTML = state.state === 'paused'
+    ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 4.5 8 5.5-8 5.5z" /></svg>'
+    : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg>';
 
   const labels = {
-    paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" data-action="restart">Restart</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
+    paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
     over: `<strong>${state.resultTitle || 'Good game.'}</strong><span>${state.resultBody || `${state.score} metres · ${state.coins} coins`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
     won: `<strong>${state.resultTitle || 'You made it.'}</strong><span>${state.resultBody || `${state.score} points`}</span><button type="button" data-action="restart">${state.resultAction || 'Play again'}</button><button type="button" class="message-secondary" data-action="home">Back to games</button>`,
   };
@@ -299,28 +279,11 @@ function startRun() {
 }
 
 function returnHome() {
-  if (controller?.returnToMenu) controller.returnToMenu();
-  else if (controller) controller.state = 'menu';
+  if (controller) controller.state = 'menu';
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
 startButton.addEventListener('click', startRun);
-const soundButton = document.querySelector('#sound-button');
-function updateSoundButton() {
-  if (!soundButton) return;
-  const muted = sound.isMuted();
-  soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
-  soundButton.classList.toggle('is-muted', muted);
-  soundButton.innerHTML = muted
-    ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M9.5 4.5 5 8H2v4h3l4.5 3.5V4.5zM13 7l5 6M18 7l-5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M9.5 4.5 5 8H2v4h3l4.5 3.5V4.5zM14 7a4.5 4.5 0 0 1 0 6M16 4.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-}
-soundButton?.addEventListener('click', () => {
-  sound.toggleMute();
-  updateSoundButton();
-});
-updateSoundButton();
-
 pauseButton.addEventListener('click', () => {
   if (controller.state === 'paused') controller.resume();
   else controller.pause();
@@ -346,9 +309,7 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
 });
 renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
-let initialBest = 0;
-try { initialBest = Number(localStorage.getItem('arcade:identity-dash:best') || 0); } catch {}
-document.querySelector('#best-value').textContent = String(Number.isFinite(initialBest) ? initialBest : 0).padStart(3, '0');
+document.querySelector('#best-value').textContent = String(Number(localStorage.getItem('arcade:identity-dash:best') || 0)).padStart(3, '0');
 try {
   createController();
 } catch (error) {
