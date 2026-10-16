@@ -25,7 +25,7 @@ const games = [
     id: 'salubata',
     title: 'Salubata',
     meta: 'STREET GAME · PLAY NOW',
-    description: 'Choose 1–4 players, take turns in the same game, and collect the most rubber bands.',
+    description: 'Take your best shot at the rubber-band circle. Master the backward throw, line up your slipper, and clear every band to win.',
     number: 'C',
     playable: true,
   },
@@ -61,16 +61,6 @@ app.innerHTML = `
             <div class="feature-text">
               <h1 id="game-title">Identity<br/><em>Dash</em></h1>
               <p id="game-description">Dodge the night traffic, clear road barriers, and scoop up coins on the way.</p>
-              <div class="player-count-picker" id="player-count-picker" hidden aria-label="Choose number of Salubata players">
-                <span class="player-count-label">PLAYERS IN THIS MATCH</span>
-                <div class="player-count-options">
-                  <button type="button" data-player-count="1" aria-pressed="false">1 Player</button>
-                  <button type="button" data-player-count="2" class="is-selected" aria-pressed="true">2 Players</button>
-                  <button type="button" data-player-count="3" aria-pressed="false">3 Players</button>
-                  <button type="button" data-player-count="4" aria-pressed="false">4 Players</button>
-                </div>
-                <p>Play together on the same screen. Turns switch automatically.</p>
-              </div>
               <button class="play-button" id="start-button" type="button">
                 <span>Start running</span><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6 3.8 15 10l-9 6.2z" fill="currentColor"/></svg>
               </button>
@@ -135,7 +125,6 @@ let toastTimer;
 let frameState = 'menu';
 let currentUser = null;
 let currentStyle = PREVIEW_STYLE;
-let salubataPlayerCount = 2;
 
 function applyIdentity(user) {
   currentUser = user;
@@ -210,7 +199,6 @@ function selectGame(id) {
   title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
   document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Start match';
-  document.querySelector('#player-count-picker').hidden = game.id !== 'salubata';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
     ? 'ARROWS TO MOVE · SPACE TO JUMP'
     : game.id === 'avatar-jump'
@@ -220,7 +208,7 @@ function selectGame(id) {
     ? 'Use the arrow keys and spacebar, or swipe across the road.'
     : game.id === 'avatar-jump'
       ? 'Use left and right to steer, then jump between the floating platforms.'
-      : 'Choose 1–4 players. Everyone plays in the same session as turns rotate automatically.';
+      : 'One player. Three phases. Clear the circle and beat your best score.';
   const touchButtons = [...document.querySelectorAll('.touch-controls button')];
   touchButtons[1].textContent = game.id === 'salubata' ? 'THROW' : 'JUMP';
   touchButtons[1].dataset.action = game.id === 'salubata' ? 'throw' : 'jump';
@@ -233,7 +221,7 @@ function selectGame(id) {
 
 function createController() {
   const Game = { 'identity-dash': IdentityDash, 'avatar-jump': AvatarJump, salubata: Salubata }[activeGame.id];
-  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI, playerCount: activeGame.id === 'salubata' ? salubataPlayerCount : 1 });
+  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI, playerCount: 1 });
 }
 
 function updateRunUI(state) {
@@ -283,10 +271,6 @@ function updateRunUI(state) {
 
 function startRun() {
   try {
-    if (activeGame.id === 'salubata') {
-      controller.setPlayerCount(salubataPlayerCount);
-      document.querySelector('#player-count-picker').hidden = true;
-    }
     controller.start();
   } catch (error) {
     showToast('This browser could not start the 3D game. Try a browser with WebGL enabled.');
@@ -299,16 +283,6 @@ function returnHome() {
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
-document.querySelectorAll('[data-player-count]').forEach((button) => {
-  button.addEventListener('click', () => {
-    salubataPlayerCount = Number(button.dataset.playerCount);
-    document.querySelectorAll('[data-player-count]').forEach((option) => {
-      const selected = option === button;
-      option.classList.toggle('is-selected', selected);
-      option.setAttribute('aria-pressed', String(selected));
-    });
-  });
-});
 startButton.addEventListener('click', startRun);
 pauseButton.addEventListener('click', () => {
   if (controller.state === 'paused') controller.resume();
