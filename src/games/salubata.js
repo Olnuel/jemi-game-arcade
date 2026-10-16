@@ -163,7 +163,9 @@ export class Salubata {
 
   handleKeyDown(event) {
     const key = event.key.toLowerCase();
-    if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'a', 'd', 's', 'w'].includes(key)) event.preventDefault();
+    if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'a', 'd', 's', 'w'].includes(key)) {
+      if (['running', 'paused'].includes(this.state)) event.preventDefault();
+    }
     if (event.repeat) return;
     if (key === 'arrowleft' || key === 'a') this.move(-1);
     else if (key === 'arrowright' || key === 'd') this.move(1);
@@ -234,6 +236,29 @@ export class Salubata {
     this.character.position.set(this.playerX, 0.55, this.playerZ);
     this.bands.forEach((band) => { band.removed = false; band.mesh.visible = true; });
     this.lastFrame = performance.now();
+    this.notify();
+  }
+
+  returnToMenu() {
+    this.resetSlipper();
+    this.state = 'menu';
+    this.phase = 'backward-aim';
+    this.turn = 1;
+    this.round = 1;
+    this.score = 0;
+    this.removed = 0;
+    this.playerIndex = 0;
+    this.marker.visible = false;
+    this.character.position.set(0, 0.55, 2.7);
+    this.playerZ = 2.7;
+    this.playerX = 0;
+    this.aim = 1;
+    this.camera.position.set(0, 10, 16);
+    this.camera.lookAt(0, 0.8, 0);
+    this.bands.forEach((band) => {
+      band.removed = false;
+      band.mesh.visible = true;
+    });
     this.notify();
   }
 

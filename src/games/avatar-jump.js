@@ -165,7 +165,9 @@ export class AvatarJump {
 
   handleKeyDown(event) {
     const key = event.key.toLowerCase();
-    if (['arrowleft', 'arrowright', 'arrowup', ' ', 'a', 'd', 'w'].includes(key)) event.preventDefault();
+    if (['arrowleft', 'arrowright', 'arrowup', ' ', 'a', 'd', 'w'].includes(key)) {
+      if (['running', 'paused'].includes(this.state)) event.preventDefault();
+    }
     if (event.repeat) return;
     if (key === 'arrowleft' || key === 'a') this.move(-1);
     else if (key === 'arrowright' || key === 'd') this.move(1);
@@ -203,6 +205,21 @@ export class AvatarJump {
       collectible.mesh.visible = true;
     }
     this.camera.position.y = 8;
+    this.notify();
+  }
+
+  returnToMenu() {
+    this.state = 'menu';
+    this.platformIndex = 0;
+    this.targetX = this.platforms[0]?.position.x || 0;
+    this.character.position.set(this.targetX, (this.platforms[0]?.userData.top || 0) + PLAYER_FOOT_OFFSET, 0);
+    this.grounded = true;
+    this.velocityY = 0;
+    this.camera.position.set(0, 8, 14);
+    for (const collectible of this.collectibles) {
+      collectible.collected = false;
+      collectible.mesh.visible = true;
+    }
     this.notify();
   }
 

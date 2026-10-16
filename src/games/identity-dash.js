@@ -208,12 +208,14 @@ export class IdentityDash {
   }
 
   handleKey(event) {
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(event.key)) event.preventDefault();
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(event.key)) {
+      if (['running', 'paused'].includes(this.state)) event.preventDefault();
+    }
     if (event.repeat) return;
     if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') this.move(-1);
     else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') this.move(1);
     else if (event.key === 'ArrowUp' || event.key === ' ' || event.key.toLowerCase() === 'w') this.jump();
-    else if (event.key === 'Escape' && this.state === 'running') this.pause();
+    else if (event.key === 'Escape') this.state === 'running' ? this.pause() : this.state === 'paused' ? this.resume() : null;
   }
 
   handleTouchStart(event) {
@@ -293,6 +295,18 @@ export class IdentityDash {
     this.spawnTimer = 0.5;
     this.hitCooldown = 0;
     this.lastFrame = performance.now();
+    this.notify();
+  }
+
+  returnToMenu() {
+    this.state = 'menu';
+    this.clearItems();
+    this.lane = 1;
+    this.targetLane = 1;
+    this.jumpTime = 0;
+    this.character.position.set(0, 0, 0);
+    this.camera.position.set(0, 5.2, 8.8);
+    this.camera.lookAt(0, 0.9, -4);
     this.notify();
   }
 

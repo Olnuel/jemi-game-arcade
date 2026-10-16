@@ -125,6 +125,7 @@ let toastTimer;
 let frameState = 'menu';
 let currentUser = null;
 let currentStyle = PREVIEW_STYLE;
+let lastPauseState = null;
 
 function applyIdentity(user) {
   currentUser = user;
@@ -241,12 +242,15 @@ function updateRunUI(state) {
   document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
-  pauseButton.hidden = !['running', 'paused'].includes(state.state);
-  pauseButton.setAttribute('aria-label', state.state === 'paused' ? 'Resume run' : 'Pause run');
-  pauseButton.classList.toggle('is-resume', state.state === 'paused');
-  pauseButton.innerHTML = state.state === 'paused'
-    ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 4.5 8 5.5-8 5.5z" /></svg>'
-    : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg>';
+  if (lastPauseState !== state.state) {
+    lastPauseState = state.state;
+    pauseButton.hidden = !['running', 'paused'].includes(state.state);
+    pauseButton.setAttribute('aria-label', state.state === 'paused' ? 'Resume run' : 'Pause run');
+    pauseButton.classList.toggle('is-resume', state.state === 'paused');
+    pauseButton.innerHTML = state.state === 'paused'
+      ? '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="m7 4.5 8 5.5-8 5.5z" /></svg>'
+      : '<svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg>';
+  }
 
   const labels = {
     paused: '<strong>Take a breather.</strong><span>Your game is paused.</span><button type="button" data-action="resume">Resume game</button><button type="button" class="message-secondary" data-action="home">Back to games</button>',
@@ -279,7 +283,8 @@ function startRun() {
 }
 
 function returnHome() {
-  if (controller) controller.state = 'menu';
+  if (controller?.returnToMenu) controller.returnToMenu();
+  else if (controller) controller.state = 'menu';
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
 }
 
