@@ -445,3 +445,82 @@ body.game-fullscreen .feature { display: block; }
 .theme-toggle { min-height: 32px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: 10px var(--mono); letter-spacing: .05em; cursor: pointer; transition: border-color .16s ease, color .16s ease; }
 .theme-toggle:hover { border-color: var(--danfo); color: var(--danfo); }
 .theme-toggle-mark { font-size: 12px; line-height: 1; }
+
+/* ------------------------------------------------------------------
+   Contrast pass. The hero copy over the 3D scene was hardcoded to the dark
+   palette, which left it cream-on-cream in light mode; these rules put every
+   piece of text on a token that flips with the theme.
+   ------------------------------------------------------------------ */
+h1 { color: var(--ink); }
+h1 em { color: var(--mint); }
+.feature-text > p { color: var(--muted); }
+.key-hint { color: var(--dim) !important; }
+.key-hint b { color: var(--dim); }
+.scene-topline { color: var(--ink); }
+.scene-index,
+.scene-footnote,
+.footnote-coordinates { color: var(--muted); }
+.text-link { color: var(--muted); text-decoration-color: var(--line); }
+.text-link:hover { color: var(--mint); }
+.coin-mark { border-color: var(--gold); }
+.game-row-text small { color: var(--dim); }
+.hud-stat small,
+.hud-score > span,
+.hud-stat > span:last-child,
+.feature-best span { color: var(--dim); }
+
+/* Rewards and options read at their resting state too, not only when earned. */
+.reward b { color: #b9a396; }
+.reward small { color: #9d8a80; }
+.reward-mark { color: #8a6f76; }
+.lighting-option { color: #b9a396; }
+.lighting-option:hover,
+.lighting-option[aria-pressed='true'] { color: var(--danfo); }
+.body-option { color: #b9a396; }
+.body-option[aria-pressed='true'] { color: #7ef0b4; }
+.theme-toggle { color: #b9a396; }
+.voice-toggle { color: #b9a396; }
+.leaderboard-empty { color: var(--dim) !important; }
+
+/* Light mode needs its own readable set: the dark values are too light on cream. */
+:root[data-theme='light'] { --muted: #584235; --dim: #6d5749; }
+:root[data-theme='light'] h1 { color: #2b1710; }
+:root[data-theme='light'] h1 em { color: #8a5c06; }
+:root[data-theme='light'] .feature-text > p { color: #584235; }
+:root[data-theme='light'] .key-hint { color: #6d5749 !important; }
+:root[data-theme='light'] .key-hint span { color: #b0740c; }
+:root[data-theme='light'] .key-hint b { color: #6d5749; }
+:root[data-theme='light'] .scene-topline { color: #2b1710; }
+:root[data-theme='light'] .scene-index,
+:root[data-theme='light'] .scene-footnote,
+:root[data-theme='light'] .footnote-coordinates { color: #584235; }
+:root[data-theme='light'] .text-link { color: #584235; }
+:root[data-theme='light'] .hud-stat { color: #8a5c06; }
+:root[data-theme='light'] .coin-mark { border-color: #8a5c06; }
+:root[data-theme='light'] .life-stat { color: #b4500f; }
+:root[data-theme='light'] .key-hint { font-weight: 500; }
+:root[data-theme='light'] .game-row-text small { color: #6d5749; }
+:root[data-theme='light'] .reward b { color: #584235; }
+:root[data-theme='light'] .reward small { color: #6d5749; }
+:root[data-theme='light'] .reward-mark { color: #8a7a70; }
+:root[data-theme='light'] .lighting-option,
+:root[data-theme='light'] .body-option,
+:root[data-theme='light'] .theme-toggle,
+:root[data-theme='light'] .voice-toggle { color: #584235; }
+:root[data-theme='light'] .leaderboard-empty { color: #6d5749 !important; }
+:root[data-theme='light'] .play-button { background: #8a5c06; color: #fffaf0; }
+:root[data-theme='light'] .play-button:hover { background: #a06a07; }
+:root[data-theme='light'] .game-message button { background: #8a5c06; color: #fffaf0; }
+:root[data-theme='light'] .game-message button:hover { background: #a06a07; }
+:root[data-theme='light'] .street-sign { background: #ffcc00; color: #2b1710; }
+
+/* Final contrast corrections from a measured WCAG audit of both themes. */
+:root[data-theme='light'] { --danfo: #8a5c06; --mint: #9a6a08; }
+:root[data-theme='light'] .key-hint span { color: #8a5c06; }
+:root[data-theme='light'] .brand b { color: #8a5c06; }
+:root[data-theme='light'] .game-row-arrow { color: #8a5c06; }
+:root[data-theme='light'] .panel-heading span:last-child { color: #8a5c06; }
+:root[data-theme='light'] .reward-mark { color: #6f6158; }
+.reward-mark { color: #a8909a; }
+:root[data-theme='light'] .keyboard-icon { color: #7d5205; }
+
