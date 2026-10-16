@@ -5,6 +5,8 @@ import { Salubata } from './games/salubata.js';
 import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, saveStartNgScore, readStartNgLeaderboard, START_NG, startNgSignIn } from './identity/startng.js';
 import { PREVIEW_STYLE, bodyOptions, readBodyOverride, writeBodyOverride } from './identity/player-character.js';
 import { lightPresets, readLighting, writeLighting } from './scene/sky.js';
+import { speakResult, readVoiceEnabled, writeVoiceEnabled, voiceSupported } from './audio/voice.js';
+import { BADGES, earnedBadges, recordResult, rewardSummary } from './rewards.js';
 
 const games = [
   {
@@ -44,6 +46,10 @@ app.innerHTML = `
       </a>
       <div class="topbar-right">
         <a class="text-link" href="https://start.ng" target="_blank" rel="noreferrer">Start.ng</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" title="Switch between light and dark">
+          <span class="theme-toggle-mark" id="theme-mark" aria-hidden="true">☾</span>
+          <span id="theme-label">Dark</span>
+        </button>
         <a class="identity-chip" id="identity-link" href="https://start.ng/" title="Open Start.ng">
           <span class="status-dot" id="identity-dot"></span>
           <span id="identity-label">${START_NG ? 'CHECKING START.NG' : 'VISITOR PREVIEW'}</span>
@@ -116,6 +122,11 @@ app.innerHTML = `
           <div class="lighting-options" id="lighting-options" role="group" aria-label="Time of day"></div>
         </div>
         <div class="controls-note"><span class="keyboard-icon" aria-hidden="true">⌘</span><p>Use the arrow keys and spacebar, or swipe across the road.</p></div>
+        <div class="rewards-panel">
+          <div class="panel-heading"><span>REWARDS</span><span id="rewards-count">0/6</span></div>
+          <ul class="rewards-list" id="rewards-list"></ul>
+          <label class="voice-toggle"><input type="checkbox" id="voice-toggle" /><span>Voice cheers</span></label>
+        </div>
         <div class="leaderboard-panel" id="leaderboard-panel" hidden>
           <div class="panel-heading"><span>START.NG TOP RUNS</span><span aria-hidden="true">★</span></div>
           <ol class="leaderboard-list" id="leaderboard-list"></ol>
@@ -177,11 +188,56 @@ function renderBodyOptions(selected = bodyOverride) {
     : 'Following your Start.ng look';
 }
 
+function renderTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  const toggle = document.querySelector('#theme-toggle');
+  if (!toggle) return;
+  const light = theme === 'light';
+  toggle.setAttribute('aria-pressed', String(light));
+  document.querySelector('#theme-mark').textContent = light ? '☀' : '☾';
+  document.querySelector('#theme-label').textContent = light ? 'Light' : 'Dark';
+}
+
+function setTheme(theme) {
+  const next = theme === 'light' ? 'light' : 'dark';
+  try { localStorage.setItem('arcade:theme', next); } catch { /* storage unavailable */ }
+  renderTheme(next);
+}
+
+function renderRewards() {
+  const host = document.querySelector('#rewards-list');
+  if (!host) return;
+  const { earned } = rewardSummary();
+  host.innerHTML = BADGES.map((badge) => {
+    const got = earned.has(badge.id);
+    return `<li class="reward${got ? ' is-earned' : ''}"${got ? '' : ' title="' + badge.hint + '"'}>
+      <span class="reward-mark" aria-hidden="true">${got ? '★' : '☆'}</span>
+      <b>${badge.label}</b><small>${badge.hint}</small>
+    </li>`;
+  }).join('');
+  const counter = document.querySelector('#rewards-count');
+  if (counter) counter.textContent = `${earned.size}/${BADGES.length}`;
+}
+
+// A finished run speaks, scores and pays out.
+function finishRun(state) {
+  scoreSent = true;
+  const outcome = state.state === 'won' ? 'won' : 'lost';
+  const fresh = recordResult(activeGame.id, outcome);
+  speakResult(activeGame.id, outcome);
+  renderRewards();
+  if (fresh.length) {
+    const names = fresh.map((id) => BADGES.find((badge) => badge.id === id)?.label).filter(Boolean);
+    showToast(`Reward unlocked: ${names.join(', ')}`);
+  }
+  publishRunScore(state);
+}
+
 // Pushes a finished run to the shared start.ng leaderboard. Only signed-in players
 // can save; guests and local previews quietly skip it.
 async function publishRunScore(state) {
-  if (scoreSent || !START_NG) return;
-  scoreSent = true;
+  if (!START_NG) return;
   try {
     const result = await saveStartNgScore({
       score: state.score || 0,
@@ -389,7 +445,10 @@ function updateRunUI(state) {
     message.hidden = true;
     message.innerHTML = '';
   }
-  if (state.state === 'won' || state.state === 'over') publishRunScore(state);
+  if (state.state === 'won' || state.state === 'over') {
+    // updateRunUI runs several times a frame; only pay out once per run.
+    if (!scoreSent) finishRun(state);
+  }
   document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS AFTER DARK' : activeGame.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   if (state.phaseText) document.querySelector('.scene-footnote span:first-child').textContent = state.phaseText.toUpperCase();
   else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'THREE LANES. ONE GOOD RUN.';
@@ -457,6 +516,19 @@ renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
 renderLightingOptions();
 renderBodyOptions();
+renderRewards();
+try { renderTheme(localStorage.getItem('arcade:theme') === 'light' ? 'light' : 'dark'); }
+catch { renderTheme('dark'); }
+document.querySelector('#theme-toggle').addEventListener('click', () => {
+  setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+});
+const voiceToggle = document.querySelector('#voice-toggle');
+if (voiceToggle) {
+  voiceToggle.checked = readVoiceEnabled();
+  voiceToggle.disabled = !voiceSupported();
+  voiceToggle.closest('.voice-toggle')?.classList.toggle('is-unsupported', !voiceSupported());
+  voiceToggle.addEventListener('change', () => writeVoiceEnabled(voiceToggle.checked));
+}
 document.querySelector('#body-options').addEventListener('click', (event) => {
   const button = event.target.closest('[data-body]');
   if (!button) return;

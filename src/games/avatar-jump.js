@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { difficultyFor, recordDifficulty } from '../difficulty.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const PLAYER_FOOT_OFFSET = FOOT_Y;
@@ -95,10 +96,11 @@ function createRooftopPergola(width = 2.6) {
 }
 
 export class AvatarJump {
-  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), difficulty = difficultyFor('avatar-jump'), onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
     this.lighting = lighting;
+    this.difficulty = difficulty;
     this.state = 'menu';
     this.score = 0;
     this.stars = 0;
@@ -199,7 +201,7 @@ export class AvatarJump {
     for (let index = 0; index < course.length; index += 1) {
       const step = course[index];
       const platform = new THREE.Group();
-      const width = step.start ? 2.8 : step.finish ? 2.85 : 2.15;
+      const width = (step.start ? 2.8 : step.finish ? 2.85 : 2.15) * this.difficulty.jumpWidth;
       const depth = step.finish ? 2.45 : 2.25;
 
       const slabMat = new THREE.MeshStandardMaterial({
@@ -371,6 +373,9 @@ export class AvatarJump {
   }
 
   start() {
+    // Score the run that just ended before resetting, then pick up the level it set.
+    recordDifficulty('avatar-jump', this.state);
+    this.difficulty = difficultyFor('avatar-jump');
     this.state = 'running';
     this.score = 0;
     this.stars = 0;
@@ -476,7 +481,7 @@ export class AvatarJump {
             platform.userData.index >= this.platformIndex &&
             this.previousFeet >= top &&
             feet <= top &&
-            Math.abs(this.character.position.x - platform.position.x) <= platform.userData.width / 2 + 0.22
+            Math.abs(this.character.position.x - platform.position.x) <= platform.userData.width / 2 + this.difficulty.jumpGrace
           );
         });
         if (landing) this.landOn(landing);

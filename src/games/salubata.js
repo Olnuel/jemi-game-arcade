@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { difficultyFor, recordDifficulty } from '../difficulty.js';
 
 const LANES = [-0.85, 0, 0.85];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -32,9 +33,10 @@ function createSlipper() {
 }
 
 export class Salubata {
-  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), difficulty = difficultyFor('salubata'), onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.lighting = lighting;
+    this.difficulty = difficulty;
     this.onChange = onChange;
     this.state = 'menu';
     this.phase = 'backward-aim';
@@ -230,6 +232,9 @@ export class Salubata {
 
   start() {
     this.resetSlipper();
+    // Score the run that just ended before resetting, then pick up the level it set.
+    recordDifficulty('salubata', this.state);
+    this.difficulty = difficultyFor('salubata');
     this.state = 'running';
     this.phase = 'backward-aim';
     this.turn = 1;
@@ -355,13 +360,13 @@ export class Salubata {
       this.slidePrevZ = this.slipper.position.z;
       this.slipper.position.x += this.slipperVelocity.x * dt;
       this.slipper.position.z += this.slipperVelocity.z * dt;
-      this.slideSpeed = Math.max(0, this.slideSpeed - 4.1 * dt);
+      this.slideSpeed = Math.max(0, this.slideSpeed - this.difficulty.saluDecel * dt);
       this.slipperVelocity.z = -this.slideSpeed;
       this.slipper.rotation.z = Math.sin(this.elapsed * 28) * 0.035;
       for (const band of this.bands) {
         if (band.removed) continue;
         const crossed = this.slidePrevZ >= band.z - 0.3 && this.slipper.position.z <= band.z + 0.3;
-        if (crossed && Math.abs(this.slipper.position.x - band.x) <= 0.54) {
+        if (crossed && Math.abs(this.slipper.position.x - band.x) <= this.difficulty.saluReach) {
           band.removed = true;
           band.mesh.visible = false;
           band.mesh.geometry.dispose();

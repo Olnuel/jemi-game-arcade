@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights } from '../scene/lagos-night-market.js';
 import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { difficultyFor, recordDifficulty } from '../difficulty.js';
 import { sound } from '../audio/sound.js';
 
 const LANES = [-1.55, 0, 1.55];
@@ -150,7 +151,8 @@ export class IdentityDash {
     this.targetLane = 1;
     this.jumpTime = 0;
     this.elapsed = 0;
-    this.speed = 8;
+    this.difficulty = difficultyFor('identity-dash');
+    this.speed = this.difficulty.dashSpeed;
     this.spawnTimer = 0.7;
     this.hitCooldown = 0;
     this.shake = 0;
@@ -385,7 +387,7 @@ export class IdentityDash {
     const primaryLane = randomLane();
 
     // At higher speeds, occasionally spawn 2 obstacles, but guarantee at least one lane is safe or jumpable
-    const spawnDouble = this.speed > 11.5 && Math.random() < 0.38;
+    const spawnDouble = this.speed > 9.5 + this.difficulty.dashSpeed && Math.random() < 0.38;
     const lanesToSpawn = [primaryLane];
     if (spawnDouble) {
       const secondLane = (primaryLane + (Math.random() < 0.5 ? 1 : 2)) % 3;
@@ -419,6 +421,9 @@ export class IdentityDash {
 
   start() {
     this.clearItems();
+    // Score the run that just ended before resetting, so the difficulty moves on the
+    // result of the previous run rather than always counting this one as a loss.
+    recordDifficulty('identity-dash', this.state);
     this.state = 'running';
     this.score = 0;
     this.coins = 0;
@@ -427,7 +432,8 @@ export class IdentityDash {
     this.targetLane = 1;
     this.jumpTime = 0;
     this.elapsed = 0;
-    this.speed = 8;
+    this.difficulty = difficultyFor('identity-dash');
+    this.speed = this.difficulty.dashSpeed;
     this.spawnTimer = 0.5;
     this.hitCooldown = 0;
     this.shake = 0;
@@ -529,12 +535,12 @@ export class IdentityDash {
       if (mark.position.z > 5) mark.position.z -= 67.2;
     }
     if (running) {
-      this.speed = Math.min(18.5, this.speed + dt * 0.11);
+      this.speed = Math.min(18.5, this.speed + dt * this.difficulty.dashRamp);
       this.score += dt * this.speed * 2.2;
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         this.spawnObstacleRow();
-        this.spawnTimer = Math.max(0.88, 1.45 - (this.speed - 8) * 0.045) + Math.random() * 0.28;
+        this.spawnTimer = Math.max(0.72, this.difficulty.dashSpawn - (this.speed - this.difficulty.dashSpeed) * 0.045) + Math.random() * 0.28;
       }
     }
 
