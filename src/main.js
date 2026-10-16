@@ -215,7 +215,7 @@ function selectGame(id) {
   document.querySelector('#scene-caption').textContent = game.id === 'identity-dash' ? 'LAGOS AFTER DARK' : game.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   createController();
   renderShelf();
-  // Salubata lets players choose the local match size before starting.
+  // Salubata opens on its single-player setup screen.
   if (game.id !== 'salubata') startRun();
 }
 
