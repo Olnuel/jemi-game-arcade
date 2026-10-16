@@ -157,8 +157,8 @@ export class IdentityDash {
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#121b21');
-    this.scene.fog = new THREE.FogExp2('#17232a', 0.017);
+    this.scene.background = new THREE.Color('#74c8f3');
+    this.scene.fog = new THREE.FogExp2('#9adcf5', 0.012);
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
@@ -186,23 +186,23 @@ export class IdentityDash {
   }
 
   buildScene(style) {
-    const ambient = new THREE.HemisphereLight('#d8eaff', '#533528', 2.15);
+    const ambient = new THREE.HemisphereLight('#fff5d7', '#568a52', 2.7);
     this.scene.add(ambient);
-    const moon = new THREE.DirectionalLight('#fff0c9', 2.2);
+    const moon = new THREE.DirectionalLight('#fff2c4', 3.0);
     moon.position.set(-4, 8, 5);
     moon.castShadow = true;
     moon.shadow.mapSize.set(1024, 1024);
     this.scene.add(moon);
-    const signLight = new THREE.PointLight('#ef7740', 34, 16, 2);
+    const signLight = new THREE.PointLight('#ffb545', 14, 16, 2);
     signLight.position.set(3.2, 2.4, -4);
     this.scene.add(signLight);
-    const tealLight = new THREE.PointLight('#33d5bf', 20, 15, 2);
+    const tealLight = new THREE.PointLight('#31d9b1', 12, 15, 2);
     tealLight.position.set(-3.8, 2.8, -9);
     this.scene.add(tealLight);
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(80, 90),
-      new THREE.MeshStandardMaterial({ color: '#242728', roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: '#b8a07c', roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.06, -29);
@@ -211,14 +211,14 @@ export class IdentityDash {
 
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(5.9, 90),
-      new THREE.MeshStandardMaterial({ color: '#292d2e', roughness: 0.86 }),
+      new THREE.MeshStandardMaterial({ color: '#3a4247', roughness: 0.86 }),
     );
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, -0.025, -29);
     road.receiveShadow = true;
     this.scene.add(road);
 
-    const edgeMat = new THREE.MeshStandardMaterial({ color: '#db854a', emissive: '#8f3d19', emissiveIntensity: 0.5 });
+    const edgeMat = new THREE.MeshStandardMaterial({ color: '#ffd447', emissive: '#8f5a12', emissiveIntensity: 0.22 });
     for (const x of [-2.98, 2.98]) {
       const edge = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.035, 90), edgeMat);
       edge.position.set(x, 0.01, -29);
@@ -249,12 +249,12 @@ export class IdentityDash {
   }
 
   createStreet() {
-    const buildingMats = ['#4b3734', '#33434a', '#594337', '#384241'].map((color) =>
+    const buildingMats = ['#d76b43', '#247f82', '#e6ad39', '#527b4b', '#5c83bd'].map((color) =>
       new THREE.MeshStandardMaterial({ color, roughness: 0.95 }),
     );
     const windowMats = [
-      new THREE.MeshStandardMaterial({ color: '#ffbc70', emissive: '#b95c23', emissiveIntensity: 1.3 }),
-      new THREE.MeshStandardMaterial({ color: '#55d3c3', emissive: '#148878', emissiveIntensity: 1.25 }),
+      new THREE.MeshStandardMaterial({ color: '#fff0b2', emissive: '#d78b25', emissiveIntensity: 0.45 }),
+      new THREE.MeshStandardMaterial({ color: '#a5f5df', emissive: '#198a70', emissiveIntensity: 0.4 }),
     ];
     for (let i = 0; i < 28; i += 1) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -286,14 +286,14 @@ export class IdentityDash {
 
     for (let row = 0; row < 5; row += 1) {
       const z = -5 - row * 14;
-      addMarketStall(this.scene, { x: -4.55, z, scale: 0.82, sign: row % 2 ? 'SUYA' : 'LAGOS', accent: '#d77544' });
-      addMarketStall(this.scene, { x: 4.55, z: z - 4, scale: 0.82, sign: row % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#168f7e' });
+      addMarketStall(this.scene, { x: -4.55, z, scale: 0.82, sign: row % 2 ? 'SUYA' : 'LAGOS', accent: '#ff783d' });
+      addMarketStall(this.scene, { x: 4.55, z: z - 4, scale: 0.82, sign: row % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#24b98a' });
     }
 
     for (const side of [-1, 1]) {
       for (let i = 0; i < 7; i += 1) {
         const z = 1 - i * 8.4;
-        const postMat = new THREE.MeshStandardMaterial({ color: '#493b35', roughness: 0.9 });
+        const postMat = new THREE.MeshStandardMaterial({ color: '#8e6a49', roughness: 0.9 });
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.07, 2.45, 8), postMat);
         post.position.set(side * 3.25, 1.22, z);
         post.castShadow = true;
