@@ -236,7 +236,17 @@ function updateRunUI(state) {
   document.querySelector('#collectible-label').textContent = activeGame.id === 'avatar-jump' ? 'STARS' : isSalubata ? 'BANDS' : 'COINS';
   document.querySelector('#coin-value').textContent = state.coins;
   document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
-  document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
+  const bestLabel = document.querySelector('.feature-best span');
+  const bestValue = document.querySelector('#best-value');
+  if (isSalubata) {
+    bestLabel.textContent = 'MATCH LEADER';
+    const p1 = controller?.players?.[0]?.bands || 0;
+    const p2 = controller?.players?.[1]?.bands || 0;
+    bestValue.textContent = p1 === p2 ? 'TIED' : p1 > p2 ? 'P1' : 'P2';
+  } else {
+    bestLabel.textContent = 'PERSONAL BEST';
+    bestValue.textContent = String(state.best).padStart(3, '0');
+  }
   document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND · PLAYER' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
   document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1} · P${state.turn || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
   document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';

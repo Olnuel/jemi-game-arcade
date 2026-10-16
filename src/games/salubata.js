@@ -67,8 +67,6 @@ export class Salubata {
     this.resizeObserver.observe(canvas.parentElement);
     this.onKeyDown = (event) => this.handleKeyDown(event);
     this.onKeyUp = (event) => this.handleKeyUp(event);
-    this.onPointerDown = (event) => { event.preventDefault(); this.beginCharge(); };
-    this.onPointerUp = (event) => { event.preventDefault(); this.releaseCharge(); };
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     this.resize();
@@ -282,9 +280,9 @@ export class Salubata {
     this.slidePower = power;
     this.slideSpeed = 7 + power * 7.1;
     this.slidePrevZ = this.slipper.position.z;
-    this.slipper.position.x = LANES[this.aim];
+    const aimOffset = (this.aim - 1) * 0.42;
+    this.slipperVelocity = { x: aimOffset * this.slideSpeed * 0.16, y: 0, z: -this.slideSpeed };
     this.slipper.rotation.x = -Math.PI / 2;
-    this.slipperVelocity = { x: 0, y: 0, z: -this.slideSpeed };
     this.marker.visible = false;
     this.notify();
   }
@@ -345,6 +343,7 @@ export class Salubata {
       }
     } else if (this.state === 'running' && this.phase === 'sliding') {
       this.slidePrevZ = this.slipper.position.z;
+      this.slipper.position.x += this.slipperVelocity.x * dt;
       this.slipper.position.z += this.slipperVelocity.z * dt;
       this.slideSpeed = Math.max(0, this.slideSpeed - 4.1 * dt);
       this.slipperVelocity.z = -this.slideSpeed;
