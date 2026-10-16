@@ -122,8 +122,8 @@ export class AvatarJump {
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#16232e');
-    this.scene.fog = new THREE.Fog('#16232e', 18, 48);
+    this.scene.background = new THREE.Color('#55c9f4');
+    this.scene.fog = new THREE.Fog('#bcefff', 24, 58);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 8, 14);
 
@@ -133,7 +133,7 @@ export class AvatarJump {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.14;
+    this.renderer.toneMappingExposure = 1.28;
 
     this.buildScene(style);
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -157,18 +157,18 @@ export class AvatarJump {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#cce9f5', '#2a3530', 2.1));
-    const sun = new THREE.DirectionalLight('#ffcf94', 2.6);
+    this.scene.add(new THREE.HemisphereLight('#fff7d1', '#8ccf6a', 3.0));
+    const sun = new THREE.DirectionalLight('#fff0b0', 3.6);
     sun.position.set(-5, 14, 8);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     this.scene.add(sun);
 
-    const tealWash = new THREE.PointLight('#35d4ba', 25, 22, 2);
+    const tealWash = new THREE.PointLight('#00d4a0', 18, 22, 2);
     tealWash.position.set(-4.5, 6, -1.8);
     this.scene.add(tealWash);
 
-    const amberWash = new THREE.PointLight('#ff924a', 28, 20, 2);
+    const amberWash = new THREE.PointLight('#ff8a32', 20, 20, 2);
     amberWash.position.set(4.5, 7, -1.4);
     this.scene.add(amberWash);
 
@@ -178,7 +178,7 @@ export class AvatarJump {
 
     const haze = new THREE.Mesh(
       new THREE.PlaneGeometry(55, 65),
-      new THREE.MeshBasicMaterial({ color: '#234148', transparent: true, opacity: 0.45 }),
+      new THREE.MeshBasicMaterial({ color: '#8be0f3', transparent: true, opacity: 0.16 }),
     );
     haze.rotation.x = -Math.PI / 2;
     haze.position.set(0, -1.1, -13);
@@ -200,13 +200,13 @@ export class AvatarJump {
 
   buildCourse() {
     const course = [
-      { x: 0, y: 0, start: true, color: '#25574f', edge: '#f09650' },
-      { x: 1.25, y: 1.8, color: '#b85e35', edge: '#f3c276' },
-      { x: -0.95, y: 3.6, color: '#2a6a62', edge: '#58e3cb' },
-      { x: 1.05, y: 5.4, color: '#c77f3a', edge: '#ffe596' },
-      { x: -1.1, y: 7.2, color: '#314e60', edge: '#52d1d8' },
-      { x: 0.82, y: 9.0, color: '#aa5537', edge: '#fca867' },
-      { x: 0, y: 10.8, finish: true, color: '#204f4a', edge: '#ffd166' },
+      { x: 0, y: 0, start: true, color: '#00a878', edge: '#ffca05' },
+      { x: 1.25, y: 1.8, color: '#ff713b', edge: '#fff1a6' },
+      { x: -0.95, y: 3.6, color: '#278fe0', edge: '#7ff6d8' },
+      { x: 1.05, y: 5.4, color: '#ffd447', edge: '#fff9d6' },
+      { x: -1.1, y: 7.2, color: '#9b67df', edge: '#79e6ff' },
+      { x: 0.82, y: 9.0, color: '#ff5e8a', edge: '#ffe16a' },
+      { x: 0, y: 10.8, finish: true, color: '#00a878', edge: '#ffdf37' },
     ];
 
     for (let index = 0; index < course.length; index += 1) {
@@ -291,8 +291,8 @@ export class AvatarJump {
 
     for (let level = 0; level < 4; level += 1) {
       const y = -0.4 + level * 3.6;
-      addMarketStall(this.scene, { x: -5.3, y, z: -2.8, scale: 0.9, sign: level === 0 ? 'LAGOS' : 'SUYA', accent: '#d77544' });
-      addMarketStall(this.scene, { x: 5.3, y, z: -3.6, scale: 0.88, sign: level % 2 ? 'NIGHT BUKA' : 'FRESH', accent: '#168f7e' });
+      addMarketStall(this.scene, { x: -5.3, y, z: -2.8, scale: 0.9, sign: level === 0 ? 'LAGOS' : 'SUYA', accent: '#ffca05' });
+      addMarketStall(this.scene, { x: 5.3, y, z: -3.6, scale: 0.88, sign: level % 2 ? 'NIGHT BUKA' : 'FRESH', accent: '#ff6338' });
       addStringLights(this.scene, { start: [-5.4, y + 3.1, -3], end: [5.4, y + 3.1, -4], count: 9 });
     }
 
@@ -303,12 +303,12 @@ export class AvatarJump {
       const height = 2.4 + ((index * 7) % 6) * 0.65;
       const tower = new THREE.Mesh(
         new THREE.BoxGeometry(width, height, 0.6),
-        new THREE.MeshStandardMaterial({ color: index % 2 ? '#26373d' : '#332d30', roughness: 0.95 }),
+        new THREE.MeshStandardMaterial({ color: ['#ff8c42', '#258fbd', '#f3c63c', '#57a85d', '#d86c9b'][index % 5], roughness: 0.82 }),
       );
       tower.position.set(-6.6 + index * 1.22, height / 2 - 0.5, 0);
       skyline.add(tower);
     }
-    const skylineLabel = makeLabel('LAGOS AFTER DARK', '#ffca78');
+    const skylineLabel = makeLabel('LAGOS ROOFTOP HOP', '#fff8c9');
     skylineLabel.position.set(0, 4.8, 0.3);
     skylineLabel.scale.set(4.5, 0.9, 1);
     skyline.add(skylineLabel);
