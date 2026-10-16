@@ -26,7 +26,9 @@ export class AvatarJump {
     this.state = 'menu';
     this.score = 0;
     this.stars = 0;
-    this.best = Number(localStorage.getItem('arcade:avatar-jump:best') || 0);
+    let savedBest = 0;
+    try { savedBest = Number(localStorage.getItem('arcade:avatar-jump:best') || 0); } catch {}
+    this.best = Number.isFinite(savedBest) ? savedBest : 0;
     this.lives = 1;
     this.elapsed = 0;
     this.platforms = [];
@@ -230,12 +232,14 @@ export class AvatarJump {
     this.character.position.y = platform.userData.top + PLAYER_FOOT_OFFSET;
     this.velocityY = 0;
     this.grounded = true;
-    this.platformIndex = platform.userData.index;
-    this.score += 100;
+    if (platform.userData.index > this.platformIndex) {
+      this.platformIndex = platform.userData.index;
+      this.score += 100;
+    }
     if (platform.userData.finish) {
       this.state = 'won';
-      this.best = Math.max(this.best, this.score + this.stars * 50);
-      localStorage.setItem('arcade:avatar-jump:best', String(this.best));
+      this.best = Math.max(this.best, this.score);
+      try { localStorage.setItem('arcade:avatar-jump:best', String(this.best)); } catch {}
     }
     this.notify();
   }
@@ -245,6 +249,13 @@ export class AvatarJump {
     const before = this.character.position.y - PLAYER_FOOT_OFFSET;
     this.previousFeet = before;
     if (this.state === 'running') {
+      const currentPlatform = this.platforms[this.platformIndex];
+      if (this.grounded && currentPlatform) {
+        if (Math.abs(this.character.position.x - currentPlatform.position.x) > currentPlatform.userData.width / 2) {
+          this.grounded = false;
+          this.velocityY = 0;
+        }
+      }
       this.character.position.x = THREE.MathUtils.damp(this.character.position.x, this.targetX, 9, dt);
       if (!this.grounded) {
         this.velocityY -= 20 * dt;
@@ -254,7 +265,7 @@ export class AvatarJump {
       if (!this.grounded && this.velocityY <= 0) {
         const landing = this.platforms.find((platform) => {
           const top = platform.userData.top;
-          return platform.userData.index > this.platformIndex && this.previousFeet >= top && feet <= top && Math.abs(this.character.position.x - platform.position.x) <= platform.userData.width / 2 + 0.22;
+          return platform.userData.index >= this.platformIndex && this.previousFeet >= top && feet <= top && Math.abs(this.character.position.x - platform.position.x) <= platform.userData.width / 2 + 0.22;
         });
         if (landing) this.landOn(landing);
       }
@@ -271,6 +282,8 @@ export class AvatarJump {
       }
       if (this.character.position.x < -3.15 || this.character.position.x > 3.15 || this.character.position.y < -3) {
         this.state = 'over';
+        this.best = Math.max(this.best, this.score);
+        try { localStorage.setItem('arcade:avatar-jump:best', String(this.best)); } catch {}
         this.notify();
       }
       this.camera.position.y = THREE.MathUtils.damp(this.camera.position.y, Math.max(8, this.character.position.y + 5.8), 2.6, dt);
