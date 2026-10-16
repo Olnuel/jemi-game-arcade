@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# start.ng hosts the built game, so the production bundle must be committed.
+!dist/

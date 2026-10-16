@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights } from '../scene/lagos-night-market.js';
+import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
 import { sound } from '../audio/sound.js';
 
 const LANES = [-1.55, 0, 1.55];
@@ -24,7 +25,7 @@ function createDanfoBus() {
   bus.add(body);
 
   // Iconic twin black horizontal stripes
-  const stripeMat = new THREE.MeshStandardMaterial({ color: '#161819', roughness: 0.8 });
+  const stripeMat = new THREE.MeshStandardMaterial({ color: '#1a1214', roughness: 0.8 });
   const topStripe = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.085, 2.27), stripeMat);
   topStripe.position.y = 0.74;
   bus.add(topStripe);
@@ -33,7 +34,7 @@ function createDanfoBus() {
   bus.add(bottomStripe);
 
   // Dark tinted windows
-  const glassMat = new THREE.MeshStandardMaterial({ color: '#19262b', roughness: 0.25, metalness: 0.75 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: '#241318', roughness: 0.25, metalness: 0.75 });
   const windscreen = new THREE.Mesh(new THREE.PlaneGeometry(1.02, 0.45), glassMat);
   windscreen.position.set(0, 0.9, 1.13);
   bus.add(windscreen);
@@ -43,7 +44,7 @@ function createDanfoBus() {
   bus.add(rearWindow);
 
   // Wheels
-  const wheelMat = new THREE.MeshStandardMaterial({ color: '#181b1d', roughness: 0.85 });
+  const wheelMat = new THREE.MeshStandardMaterial({ color: '#1d1416', roughness: 0.85 });
   const wheelGeom = new THREE.CylinderGeometry(0.23, 0.23, 0.15, 12);
   wheelGeom.rotateZ(Math.PI / 2);
   [
@@ -88,7 +89,7 @@ function createHurdle() {
   });
 
   // Support legs
-  const legMat = new THREE.MeshStandardMaterial({ color: '#262c2e', roughness: 0.8 });
+  const legMat = new THREE.MeshStandardMaterial({ color: '#2b1e20', roughness: 0.8 });
   const legGeom = new THREE.BoxGeometry(0.08, 0.48, 0.46);
   [-0.54, 0.54].forEach((x) => {
     const leg = new THREE.Mesh(legGeom, legMat);
@@ -134,8 +135,9 @@ function createCoinMesh() {
 }
 
 export class IdentityDash {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
     this.canvas = canvas;
+    this.lighting = lighting;
     this.onChange = onChange;
     this.state = 'menu';
     this.score = 0;
@@ -157,8 +159,7 @@ export class IdentityDash {
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#121b21');
-    this.scene.fog = new THREE.FogExp2('#17232a', 0.017);
+    this.scene.fog = new THREE.FogExp2('#6b3352', 0.014);
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
@@ -186,37 +187,38 @@ export class IdentityDash {
   }
 
   buildScene(style) {
-    const ambient = new THREE.HemisphereLight('#d8eaff', '#533528', 2.15);
-    this.scene.add(ambient);
-    const moon = new THREE.DirectionalLight('#fff0c9', 2.2);
-    moon.position.set(-4, 8, 5);
-    moon.castShadow = true;
-    moon.shadow.mapSize.set(1024, 1024);
-    this.scene.add(moon);
-    const signLight = new THREE.PointLight('#ef7740', 34, 16, 2);
-    signLight.position.set(3.2, 2.4, -4);
-    this.scene.add(signLight);
-    const tealLight = new THREE.PointLight('#33d5bf', 20, 15, 2);
-    tealLight.position.set(-3.8, 2.8, -9);
-    this.scene.add(tealLight);
+    applyLighting(this.scene, this.lighting);
+    this.washes = [];
+    const addWash = (color, intensity, x, y, z, distance) => {
+      const light = new THREE.PointLight(color, intensity, distance, 2);
+      light.position.set(x, y, z);
+      this.scene.add(light);
+      this.washes.push({ light, base: intensity });
+      return light;
+    };
+    addWash('#ff5722', 34, 3.2, 2.4, -4, 16);
+    addWash('#00d98a', 20, -3.8, 2.8, -9, 15);
+    this.roadMaterials = [];
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(80, 90),
-      new THREE.MeshStandardMaterial({ color: '#242728', roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: '#2a1c1a', roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.06, -29);
     ground.receiveShadow = true;
     this.scene.add(ground);
+    this.roadMaterials.push({ mesh: ground, night: '#2a1c1a', day: '#8a6a4a' });
 
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(5.9, 90),
-      new THREE.MeshStandardMaterial({ color: '#292d2e', roughness: 0.86 }),
+      new THREE.MeshStandardMaterial({ color: '#33211d', roughness: 0.86 }),
     );
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, -0.025, -29);
     road.receiveShadow = true;
     this.scene.add(road);
+    this.roadMaterials.push({ mesh: road, night: '#33211d', day: '#6d6258' });
 
     const edgeMat = new THREE.MeshStandardMaterial({ color: '#db854a', emissive: '#8f3d19', emissiveIntensity: 0.5 });
     for (const x of [-2.98, 2.98]) {
@@ -237,11 +239,11 @@ export class IdentityDash {
     this.createStreet();
     addStringLights(this.scene, { start: [-4.5, 4.8, 1], end: [4.5, 4.8, -10], count: 12 });
     this.character = createPlayerCharacter(style);
-    this.character.position.set(0, 0, 2.15);
+    this.character.position.set(0, FOOT_Y, 2.15);
     this.scene.add(this.character);
     this.playerShadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.5, 24),
-      new THREE.MeshBasicMaterial({ color: '#0a0f10', transparent: true, opacity: 0.38 }),
+      new THREE.MeshBasicMaterial({ color: '#0c0607', transparent: true, opacity: 0.38 }),
     );
     this.playerShadow.rotation.x = -Math.PI / 2;
     this.playerShadow.position.set(0, 0.015, 2.15);
@@ -254,7 +256,7 @@ export class IdentityDash {
     );
     const windowMats = [
       new THREE.MeshStandardMaterial({ color: '#ffbc70', emissive: '#b95c23', emissiveIntensity: 1.3 }),
-      new THREE.MeshStandardMaterial({ color: '#55d3c3', emissive: '#148878', emissiveIntensity: 1.25 }),
+      new THREE.MeshStandardMaterial({ color: '#2ee08a', emissive: '#00875a', emissiveIntensity: 1.25 }),
     ];
     for (let i = 0; i < 28; i += 1) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -293,7 +295,7 @@ export class IdentityDash {
     for (const side of [-1, 1]) {
       for (let i = 0; i < 7; i += 1) {
         const z = 1 - i * 8.4;
-        const postMat = new THREE.MeshStandardMaterial({ color: '#493b35', roughness: 0.9 });
+        const postMat = new THREE.MeshStandardMaterial({ color: '#4a3228', roughness: 0.9 });
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.07, 2.45, 8), postMat);
         post.position.set(side * 3.25, 1.22, z);
         post.castShadow = true;
@@ -310,6 +312,19 @@ export class IdentityDash {
 
   setStyle(style = PREVIEW_STYLE) {
     applyPlayerCharacterStyle(this.character, style);
+  }
+
+  /** Switches the time of day live, without rebuilding the street. */
+  setLighting(id) {
+    if (!LIGHT_PRESETS[id]) return;
+    this.lighting = id;
+    const preset = applyLighting(this.scene, id);
+    this.scene.fog.color.set(preset.fog);
+    const boost = id === 'night' ? 1.35 : id === 'evening' ? 1.1 : 0.55;
+    this.washes?.forEach(({ light, base }) => { light.intensity = base * boost; });
+    this.roadMaterials?.forEach(({ mesh, night, day }) => {
+      mesh.material.color.set(id === 'daylight' ? day : id === 'evening' ? night : night);
+    });
   }
 
   resize() {
@@ -425,7 +440,7 @@ export class IdentityDash {
     this.lane = 1;
     this.targetLane = 1;
     this.jumpTime = 0;
-    this.character.position.set(0, 0, 2.15);
+    this.character.position.set(0, FOOT_Y, 2.15);
     this.character.visible = true;
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);

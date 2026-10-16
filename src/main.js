@@ -2,8 +2,9 @@ import { sound } from './audio/sound.js';
 import { IdentityDash } from './games/identity-dash.js';
 import { AvatarJump } from './games/avatar-jump.js';
 import { Salubata } from './games/salubata.js';
-import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, START_NG, startNgSignIn } from './identity/startng.js';
+import { mapStartNgStyle, onStartNgUserChange, readStartNgIdentity, saveStartNgScore, readStartNgLeaderboard, START_NG, startNgSignIn } from './identity/startng.js';
 import { PREVIEW_STYLE } from './identity/player-character.js';
+import { lightPresets, readLighting, writeLighting } from './scene/sky.js';
 
 const games = [
   {
@@ -26,7 +27,7 @@ const games = [
     id: 'salubata',
     title: 'Salubata',
     meta: 'STREET GAME · PLAY NOW',
-    description: 'Pass the phone, throw your slipper behind you, then slide it at the rubber bands. Most bands wins.',
+    description: 'Throw your slipper behind you to set the mark, then slide it through the rubber bands.',
     number: 'C',
     playable: true,
   },
@@ -106,7 +107,15 @@ app.innerHTML = `
           </div>
           <p class="profile-note" id="profile-note">${START_NG ? 'Checking your centrally managed Start.ng character…' : 'Your Start.ng character styling appears when the game is hosted on your Start.ng address.'}</p>
         </div>
+        <div class="lighting-panel">
+          <div class="panel-heading"><span>TIME OF DAY</span><span id="lighting-hint">Lagos dusk</span></div>
+          <div class="lighting-options" id="lighting-options" role="group" aria-label="Time of day"></div>
+        </div>
         <div class="controls-note"><span class="keyboard-icon" aria-hidden="true">⌘</span><p>Use the arrow keys and spacebar, or swipe across the road.</p></div>
+        <div class="leaderboard-panel" id="leaderboard-panel" hidden>
+          <div class="panel-heading"><span>START.NG TOP RUNS</span><span aria-hidden="true">★</span></div>
+          <ol class="leaderboard-list" id="leaderboard-list"></ol>
+        </div>
         <footer class="shelf-footer"><span>MADE FOR THE PLAYERS</span><span>NG · 001</span></footer>
       </aside>
     </main>
@@ -132,12 +141,54 @@ let frameState = 'menu';
 let currentUser = null;
 let currentStyle = PREVIEW_STYLE;
 let lastPauseState = null;
+let scoreSent = false;
+let playerSignedIn = false;
 
-function applyIdentity(user) {
+// Pushes a finished run to the shared start.ng leaderboard. Only signed-in players
+// can save; guests and local previews quietly skip it.
+async function publishRunScore(state) {
+  if (scoreSent || !START_NG) return;
+  scoreSent = true;
+  try {
+    const result = await saveStartNgScore({
+      score: state.score || 0,
+      stars: state.coins || 0,
+      coins: state.coins || 0,
+    });
+    if (result?.result) {
+      const rank = result.result.rank;
+      showToast(result.result.improved && rank ? `New personal best on Start.ng - you are #${rank}!` : 'Run saved to your Start.ng leaderboard.');
+    }
+  } catch {
+    // A failed score save must never interrupt play.
+  }
+  refreshLeaderboard();
+}
+
+async function refreshLeaderboard() {
+  const board = document.querySelector('#leaderboard-list');
+  if (!board || !START_NG) return;
+  try {
+    const entries = await readStartNgLeaderboard(5);
+    if (!entries.length) {
+      board.innerHTML = '<li class="leaderboard-empty">No runs saved yet. Sign in and be the first.</li>';
+      return;
+    }
+    board.innerHTML = entries
+      .map((entry) => `<li${entry.player_id && currentUser && entry.player_id === currentUser.id ? ' class="is-you"' : ''}><span>${entry.rank}</span><b>${entry.name}</b><i>${entry.stats?.score ?? entry.score}</i></li>`)
+      .join('');
+  } catch {
+    board.innerHTML = '<li class="leaderboard-empty">Leaderboard unavailable.</li>';
+  }
+}
+
+function applyIdentity(user, signedIn = true) {
   currentUser = user;
   currentStyle = (user && mapStartNgStyle(user)) || PREVIEW_STYLE;
   controller?.setStyle(currentStyle);
 
+  const isGuest = Boolean(user) && !signedIn;
+  playerSignedIn = Boolean(user) && !isGuest;
   const name = currentStyle.name || PREVIEW_STYLE.name;
   const profileName = document.querySelector('#player-name');
   const profileState = document.querySelector('#profile-state');
@@ -149,17 +200,19 @@ function applyIdentity(user) {
   const panel = document.querySelector('.profile-panel');
 
   profileName.textContent = name;
-  profileState.textContent = user ? 'Start.ng profile · synced' : START_NG ? 'Guest player' : 'Style preview';
-  profileNote.textContent = user
+  profileState.textContent = isGuest ? 'Start.ng guest · not signed in' : user ? 'Start.ng profile · synced' : START_NG ? 'Guest player' : 'Style preview';
+  profileNote.textContent = user && !isGuest
     ? `Your saved Start.ng character is active in ${activeGame.title}.`
-    : START_NG
-      ? 'Sign in with Start.ng to bring your saved character into the run.'
-      : 'Your Start.ng character appears here when this game is hosted on its Start.ng address.';
-  identityLabel.textContent = user ? `${name.toUpperCase()} · START.NG` : START_NG ? 'SIGN IN WITH START.NG' : 'VISITOR PREVIEW';
-  identityDot.classList.toggle('is-connected', Boolean(user));
+    : isGuest
+      ? 'Playing as the Start.ng guest. Sign in to save your runs to the leaderboard.'
+      : START_NG
+        ? 'Sign in with Start.ng to bring your saved character into the run.'
+        : 'Your Start.ng character appears here when this game is hosted on its Start.ng address.';
+  identityLabel.textContent = user && !isGuest ? `${name.toUpperCase()} · START.NG` : START_NG ? 'SIGN IN WITH START.NG' : 'VISITOR PREVIEW';
+  identityDot.classList.toggle('is-connected', Boolean(user) && !isGuest);
   identityDot.classList.toggle('is-checking', !user && START_NG);
   headerAvatar.textContent = name.slice(0, 1).toUpperCase();
-  identityLink.title = user ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
+  identityLink.title = user && !isGuest ? 'Signed in with Start.ng' : 'Sign in with Start.ng to use your profile';
   panel.style.setProperty('--character-skin', currentStyle.skinColor || PREVIEW_STYLE.skinColor);
   panel.style.setProperty('--character-hair', currentStyle.hairColor || PREVIEW_STYLE.hairColor);
   panel.style.setProperty('--character-top', currentStyle.primaryColor || PREVIEW_STYLE.primaryColor);
@@ -167,7 +220,7 @@ function applyIdentity(user) {
 }
 
 function handleIdentityLink(event) {
-  if (!START_NG || currentUser) return;
+  if (!START_NG || playerSignedIn) return;
   event.preventDefault();
   startNgSignIn();
 }
@@ -205,12 +258,13 @@ function selectGame(id) {
   const firstWord = words.shift();
   title.innerHTML = words.length ? `${firstWord}<br/><em>${words.join(' ')}</em>` : `<em>${firstWord}</em>`;
   description.textContent = game.description;
-  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Pass the phone';
-  document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
-    ? 'ARROWS TO MOVE · SPACE TO JUMP'
+  document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Take your turn';
+  const hint = game.id === 'identity-dash'
+    ? 'ARROWS TO MOVE|SPACE TO JUMP'
     : game.id === 'avatar-jump'
-      ? 'LEFT / RIGHT TO MOVE · SPACE TO JUMP'
-      : 'HOLD ↓ TO THROW BACK · ← / → TO AIM · SPACE TO SLIDE';
+      ? 'LEFT / RIGHT TO MOVE|SPACE TO JUMP'
+      : 'HOLD ↓ TO THROW BACK|← / → TO AIM · SPACE TO SLIDE';
+  document.querySelector('.key-hint').innerHTML = hint.split('|').map((part) => `<span>${part}</span>`).join(' <b>·</b> ');
   document.querySelector('.controls-note p').textContent = game.id === 'identity-dash'
     ? 'Use the arrow keys and spacebar, or swipe across the road.'
     : game.id === 'avatar-jump'
@@ -228,7 +282,24 @@ function selectGame(id) {
 
 function createController() {
   const Game = { 'identity-dash': IdentityDash, 'avatar-jump': AvatarJump, salubata: Salubata }[activeGame.id];
-  controller = new Game(canvas, { style: currentStyle, onChange: updateRunUI });
+  controller = new Game(canvas, { style: currentStyle, lighting: readLighting(), onChange: updateRunUI });
+}
+
+// Daylight / evening / night, applied to whichever game is loaded without restarting it.
+function setLighting(id) {
+  writeLighting(id);
+  controller?.setLighting?.(id);
+  renderLightingOptions(id);
+}
+
+function renderLightingOptions(selected = readLighting()) {
+  const host = document.querySelector('#lighting-options');
+  if (!host) return;
+  const presets = lightPresets();
+  host.innerHTML = presets
+    .map((p) => `<button type="button" class="lighting-option" data-light="${p.id}" aria-pressed="${p.id === selected}"><i class="lighting-swatch lighting-swatch--${p.id}" aria-hidden="true"></i>${p.label}</button>`)
+    .join('');
+  document.querySelector('#lighting-hint').textContent = presets.find((p) => p.id === selected)?.hint || '';
 }
 
 function updateRunUI(state) {
@@ -244,18 +315,10 @@ function updateRunUI(state) {
   document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
   const bestLabel = document.querySelector('.feature-best span');
   const bestValue = document.querySelector('#best-value');
-  if (isSalubata) {
-    bestLabel.textContent = 'MATCH LEADER';
-    const p1 = controller?.players?.[0]?.bands || 0;
-    const p2 = controller?.players?.[1]?.bands || 0;
-    bestValue.textContent = p1 === p2 ? 'TIED' : p1 > p2 ? 'P1' : 'P2';
-  } else {
-    bestLabel.textContent = 'PERSONAL BEST';
-    bestValue.textContent = String(state.best).padStart(3, '0');
-  }
-  document.querySelector('#hud-life-label').textContent = isSalubata ? 'ROUND · PLAYER' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
-  document.querySelector('#life-value').textContent = isSalubata ? `R${state.round || 1} · P${state.turn || 1}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
-  document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
+  bestLabel.textContent = 'PERSONAL BEST';
+  bestValue.textContent = String(state.best).padStart(3, '0');
+  document.querySelector('#hud-life-label').textContent = isSalubata ? 'TURN' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
+  document.querySelector('#life-value').textContent = isSalubata ? `${state.turn || 1}/${state.maxTurns || 4}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
   if (lastPauseState !== state.state) {
@@ -277,19 +340,21 @@ function updateRunUI(state) {
     message.innerHTML = labels[state.state];
     message.hidden = false;
     message.querySelector('[data-action="resume"]')?.addEventListener('click', () => controller.resume());
-    message.querySelector('[data-action="restart"]')?.addEventListener('click', () => controller.start());
+    message.querySelector('[data-action="restart"]')?.addEventListener('click', startRun);
     message.querySelector('[data-action="home"]')?.addEventListener('click', returnHome);
   } else {
     message.hidden = true;
     message.innerHTML = '';
   }
+  if (state.state === 'won' || state.state === 'over') publishRunScore(state);
   document.querySelector('#scene-caption').textContent = state.state === 'running' ? (activeGame.id === 'salubata' ? state.phaseLabel : activeGame.id === 'avatar-jump' ? 'CLIMB IN PROGRESS' : 'RUN IN PROGRESS') : activeGame.id === 'identity-dash' ? 'LAGOS AFTER DARK' : activeGame.id === 'avatar-jump' ? 'UP ABOVE THE MARKET' : 'SALUBATA STREET';
   if (state.phaseText) document.querySelector('.scene-footnote span:first-child').textContent = state.phaseText.toUpperCase();
   else document.querySelector('.scene-footnote span:first-child').textContent = activeGame.id === 'avatar-jump' ? `${state.level || 1} OF 7 PLATFORMS` : 'THREE LANES. ONE GOOD RUN.';
-  if (state.turn && !isSalubata) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
+  if (state.turn) document.querySelector('#hud-life-label').textContent = `TURN ${state.turn}/${state.maxTurns}`;
 }
 
 function startRun() {
+  scoreSent = false;
   try {
     controller.start();
   } catch (error) {
@@ -299,6 +364,7 @@ function startRun() {
 }
 
 function returnHome() {
+  scoreSent = false;
   if (controller?.returnToMenu) controller.returnToMenu();
   else if (controller) controller.state = 'menu';
   updateRunUI({ state: 'menu', score: 0, coins: 0, best: controller?.best || 0, lives: 3 });
@@ -346,6 +412,11 @@ document.querySelectorAll('.touch-controls button').forEach((button) => {
 });
 renderShelf();
 document.querySelector('#identity-link').addEventListener('click', handleIdentityLink);
+renderLightingOptions();
+document.querySelector('#lighting-options').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-light]');
+  if (button) setLighting(button.dataset.light);
+});
 let initialBest = 0;
 try { initialBest = Number(localStorage.getItem('arcade:identity-dash:best') || 0); } catch {}
 document.querySelector('#best-value').textContent = String(Number.isFinite(initialBest) ? initialBest : 0).padStart(3, '0');
@@ -358,13 +429,20 @@ try {
 }
 
 readStartNgIdentity().then((identity) => {
-  applyIdentity(identity.user);
+  applyIdentity(identity.user, identity.signedIn);
   if (identity.status === 'unavailable' && START_NG) {
     document.querySelector('#profile-note').textContent = 'Start.ng sign-in could not be checked. Reload this game to try again.';
+  }
+  if (START_NG && identity.user) {
+    document.querySelector('#leaderboard-panel').hidden = false;
+    refreshLeaderboard();
   }
 }).catch((error) => {
   console.warn('Start.ng sign-in check failed.', error);
 });
-onStartNgUserChange(applyIdentity);
+onStartNgUserChange((user) => {
+  applyIdentity(user);
+  if (user) refreshLeaderboard();
+});
 
 window.addEventListener('pagehide', () => controller?.dispose(), { once: true });

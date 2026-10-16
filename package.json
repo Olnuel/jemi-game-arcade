@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/copy-assets.mjs",
     "preview": "vite preview",
+    "cover": "node scripts/make-cover.mjs",
     "check": "node --check src/main.js && node --check src/games/identity-dash.js && node --check src/games/avatar-jump.js && node --check src/games/salubata.js && node --check src/identity/player-character.js && node --check src/identity/startng.js && node --check src/audio/sound.js"
   },
   "dependencies": {

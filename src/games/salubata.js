@@ -1,7 +1,8 @@
 import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
-import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
+import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
 
 const LANES = [-0.85, 0, 0.85];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -31,20 +32,16 @@ function createSlipper() {
 }
 
 export class Salubata {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
     this.canvas = canvas;
+    this.lighting = lighting;
     this.onChange = onChange;
     this.state = 'menu';
     this.phase = 'backward-aim';
     this.turn = 1;
-    this.round = 1;
+    this.maxTurns = 4;
     this.score = 0;
     this.removed = 0;
-    this.players = [
-      { name: 'Player 1', score: 0, bands: 0 },
-      { name: 'Player 2', score: 0, bands: 0 },
-    ];
-    this.playerIndex = 0;
     this.walkElapsed = 0;
     this.elapsed = 0;
     this.bands = [];
@@ -52,8 +49,7 @@ export class Salubata {
     this.slipper = null;
     this.disposed = false;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#151e20');
-    this.scene.fog = new THREE.FogExp2('#151e20', 0.028);
+    this.scene.fog = new THREE.FogExp2('#6b3352', 0.016);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 10, 16);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -78,31 +74,29 @@ export class Salubata {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#ffdfbd', '#362d27', 2.05));
-    const lamp = new THREE.DirectionalLight('#ffd39a', 2.6);
-    lamp.position.set(-4, 9, 5);
-    lamp.castShadow = true;
-    lamp.shadow.mapSize.set(1024, 1024);
-    this.scene.add(lamp);
+    applyLighting(this.scene, this.lighting);
+    this.groundMaterials = [];
 
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#292d29', roughness: 0.96 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(10, 24), new THREE.MeshStandardMaterial({ color: '#2e1f1c', roughness: 0.96 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.08, -2.5);
     ground.receiveShadow = true;
     this.scene.add(ground);
-    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#32312d', roughness: 0.9 }));
+    this.groundMaterials.push({ mesh: ground, day: '#a8825e', night: '#2e1f1c' });
+    const alley = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 23), new THREE.MeshStandardMaterial({ color: '#3a2620', roughness: 0.9 }));
     alley.rotation.x = -Math.PI / 2;
     alley.position.set(0, -0.03, -2.5);
     alley.receiveShadow = true;
     this.scene.add(alley);
+    this.groundMaterials.push({ mesh: alley, day: '#9a8878', night: '#3a2620' });
 
-    const lineMat = new THREE.MeshStandardMaterial({ color: '#d98a4c', emissive: '#713514', emissiveIntensity: 0.38 });
+    const lineMat = new THREE.MeshStandardMaterial({ color: '#ff7847', emissive: '#8f2f0d', emissiveIntensity: 0.38 });
     for (const x of [-4.1, 4.1]) {
       const line = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.025, 23), lineMat);
       line.position.set(x, 0.012, -2.5);
       this.scene.add(line);
     }
-    const throwLine = new THREE.Mesh(new THREE.BoxGeometry(8.15, 0.018, 0.055), new THREE.MeshStandardMaterial({ color: '#cbb88e', roughness: 1 }));
+    const throwLine = new THREE.Mesh(new THREE.BoxGeometry(8.15, 0.018, 0.055), new THREE.MeshStandardMaterial({ color: '#e0c48a', roughness: 1 }));
     throwLine.position.set(0, 0.015, 2.7);
     this.scene.add(throwLine);
     for (let index = 0; index < 6; index += 1) {
@@ -111,25 +105,25 @@ export class Salubata {
       addMarketStall(this.scene, { x: 5.15, z: z - 1.1, scale: 0.93, sign: index % 2 ? 'FRESH' : 'NIGHT BUKA', accent: '#168f7e' });
     }
     addStringLights(this.scene, { start: [-5.2, 4.0, 2], end: [5.2, 4.0, -6], count: 12 });
-    const skyline = makeLabel('LAGOS · STREET PLAY', '#f4d49a');
+    const skyline = makeLabel('LAGOS Â· STREET PLAY', '#f4d49a');
     skyline.position.set(0, 5.4, -8.5);
     skyline.scale.set(5.8, 1.1, 1);
     this.scene.add(skyline);
 
-    this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#59dec5' }));
+    this.targetRing = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.045, 8, 64), new THREE.MeshBasicMaterial({ color: '#00d98a' }));
     this.targetRing.rotation.x = Math.PI / 2;
     this.targetRing.position.set(0, 0.035, -2.75);
     this.scene.add(this.targetRing);
     this.buildBands();
     this.character = createPlayerCharacter(style);
-    this.character.position.set(0, 0.55, 2.7);
+    this.character.position.set(0, FOOT_Y, 2.7);
     this.character.rotation.y = Math.PI;
     this.scene.add(this.character);
-    this.playerShadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), new THREE.MeshBasicMaterial({ color: '#080b09', transparent: true, opacity: 0.38 }));
+    this.playerShadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), new THREE.MeshBasicMaterial({ color: '#0a0507', transparent: true, opacity: 0.38 }));
     this.playerShadow.rotation.x = -Math.PI / 2;
     this.playerShadow.position.set(0, 0.015, 2.7);
     this.scene.add(this.playerShadow);
-    this.marker = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.035, 8, 28), new THREE.MeshBasicMaterial({ color: '#f2cb82', transparent: true, opacity: 0.9 }));
+    this.marker = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.035, 8, 28), new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.9 }));
     this.marker.rotation.x = Math.PI / 2;
     this.marker.visible = false;
     this.scene.add(this.marker);
@@ -149,6 +143,17 @@ export class Salubata {
   }
 
   setStyle(style = PREVIEW_STYLE) { applyPlayerCharacterStyle(this.character, style); }
+
+  /** Switches the time of day live, without rebuilding the street. */
+  setLighting(id) {
+    if (!LIGHT_PRESETS[id]) return;
+    this.lighting = id;
+    const preset = applyLighting(this.scene, id);
+    this.scene.fog.color.set(preset.fog);
+    this.groundMaterials?.forEach(({ mesh, day, night }) => {
+      mesh.material.color.set(id === 'daylight' ? day : night);
+    });
+  }
 
   resize() {
     if (this.disposed) return;
@@ -228,16 +233,13 @@ export class Salubata {
     this.state = 'running';
     this.phase = 'backward-aim';
     this.turn = 1;
-    this.round = 1;
     this.score = 0;
     this.removed = 0;
-    this.playerIndex = 0;
-    this.players.forEach((player) => { player.score = 0; player.bands = 0; });
     this.aim = 1;
     this.marker.visible = false;
     this.playerZ = 2.7;
     this.playerX = 0;
-    this.character.position.set(this.playerX, 0.55, this.playerZ);
+    this.character.position.set(this.playerX, FOOT_Y, this.playerZ);
     this.bands.forEach((band) => { band.removed = false; band.mesh.visible = true; });
     this.lastFrame = performance.now();
     this.notify();
@@ -248,12 +250,10 @@ export class Salubata {
     this.state = 'menu';
     this.phase = 'backward-aim';
     this.turn = 1;
-    this.round = 1;
     this.score = 0;
     this.removed = 0;
-    this.playerIndex = 0;
     this.marker.visible = false;
-    this.character.position.set(0, 0.55, 2.7);
+    this.character.position.set(0, FOOT_Y, 2.7);
     this.playerZ = 2.7;
     this.playerX = 0;
     this.aim = 1;
@@ -300,7 +300,7 @@ export class Salubata {
     this.aim = 1;
     this.walkElapsed = 0;
     this.walkFrom = this.character.position.clone();
-    this.walkTo = new THREE.Vector3(this.slipper.position.x, 0.55, this.slipper.position.z + 0.62);
+    this.walkTo = new THREE.Vector3(this.slipper.position.x, FOOT_Y, this.slipper.position.z + 0.62);
     this.playerZ = this.walkTo.z;
     this.playerX = this.walkTo.x;
     this.marker.position.set(this.slipper.position.x, 0.035, this.slipper.position.z);
@@ -316,11 +316,14 @@ export class Salubata {
       this.notify();
       return;
     }
-    this.playerIndex = (this.playerIndex + 1) % this.players.length;
-    if (this.playerIndex === 0) this.round += 1;
-    this.turn = this.playerIndex + 1;
+    if (this.turn >= this.maxTurns) {
+      this.state = 'over';
+      this.notify();
+      return;
+    }
+    this.turn += 1;
     this.resetSlipper();
-    this.character.position.set(0, 0.55, 2.7);
+    this.character.position.set(0, FOOT_Y, 2.7);
     this.playerZ = 2.7;
     this.playerX = 0;
     this.aim = 1;
@@ -365,10 +368,7 @@ export class Salubata {
           band.mesh.material.dispose();
           this.removed += 1;
           sound.playCoin();
-          const player = this.players[this.playerIndex];
-          player.bands += 1;
-          player.score += 100;
-          this.score = player.score;
+          this.score += 100;
           this.notify();
         }
       }
@@ -387,37 +387,34 @@ export class Salubata {
 
   notify() {
     const names = { 'backward-aim': 'Back throw', 'backward-flight': 'Throw airborne', 'slide-aim': 'Aim ground slide', sliding: 'Slipper sliding', 'turn-end': 'Turn complete' };
-    const player = this.players[this.playerIndex];
-    const leader = this.players[0].bands === this.players[1].bands ? null : this.players[0].bands > this.players[1].bands ? this.players[0] : this.players[1];
-    const label = this.state === 'won' ? 'Circle cleared' : `${player.name} · ${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
-    const playerScores = `P1 ${this.players[0].bands} · P2 ${this.players[1].bands}`;
+    const label = this.state === 'won' ? 'Circle cleared' : `${names[this.phase] || 'Walk to mark'} Â· turn ${this.turn}/${this.maxTurns}`;
+    const progress = `${this.removed}/${this.bands.length} bands`;
     const instructions = this.phase === 'backward-aim'
-      ? 'HOLD ↓ / SPACE'
+      ? 'HOLD â†“ / SPACE Â· RELEASE TO THROW BACK'
       : this.phase === 'slide-aim'
-        ? '← / → · HOLD ↑ / SPACE'
+        ? 'â† / â†’ TO AIM Â· HOLD â†‘ / SPACE Â· RELEASE TO SLIDE'
         : this.phase === 'backward-flight'
-          ? 'SLIPPER AIRBORNE · LANDING MARK'
+          ? 'SLIPPER AIRBORNE Â· LANDING SETS THROWING MARK'
           : this.phase === 'walking'
             ? 'WALKING TO THE MARK'
             : this.phase === 'sliding'
-              ? 'SLIPPER SLIDING'
+              ? 'SLIDE THE SLIPPER THROUGH THE RUBBER BANDS'
               : '';
     this.onChange({
       state: this.state,
-      score: player.score,
-      coins: player.bands,
+      score: this.score,
+      coins: this.removed,
       best: 0,
-      lives: this.players.length,
-      turn: this.playerIndex + 1,
-      maxTurns: this.players.length,
-      round: this.round,
+      lives: this.maxTurns - this.turn + 1,
+      turn: this.turn,
+      maxTurns: this.maxTurns,
       type: 'salubata',
       phase: this.phase,
       phaseLabel: label,
-      phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : instructions,
-      resultTitle: this.state === 'won' ? (leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
-      resultBody: `${this.players[0].name}: ${this.players[0].bands} bands · ${this.players[1].name}: ${this.players[1].bands} bands`,
-      resultAction: 'Play another match',
+      phaseText: this.state === 'running' ? `${progress}  Â·  ${instructions}` : instructions,
+      resultTitle: this.state === 'won' ? 'Street champion.' : 'Out of turns.',
+      resultBody: `${this.removed} bands cleared Â· ${this.score} points Â· ${this.turn}/${this.maxTurns} turns`,
+      resultAction: 'Play another round',
     });
   }
 

@@ -1,10 +1,11 @@
 import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
-import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
+import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
+import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const PLAYER_FOOT_OFFSET = 0.56;
+const PLAYER_FOOT_OFFSET = FOOT_Y;
 
 function makeStarGeometry() {
   const shape = new THREE.Shape();
@@ -54,7 +55,7 @@ function createWaterTank() {
 function createRooftopPergola(width = 2.6) {
   const pergola = new THREE.Group();
   const woodMat = new THREE.MeshStandardMaterial({ color: '#885032', roughness: 0.7, metalness: 0.05 });
-  const beamMat = new THREE.MeshStandardMaterial({ color: '#25746b', roughness: 0.6 });
+  const beamMat = new THREE.MeshStandardMaterial({ color: '#0a7a5c', roughness: 0.6 });
 
   const postGeom = new THREE.BoxGeometry(0.09, 1.65, 0.09);
   const halfW = width * 0.42;
@@ -94,9 +95,10 @@ function createRooftopPergola(width = 2.6) {
 }
 
 export class AvatarJump {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, lighting = readLighting(), onChange = () => {} } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
+    this.lighting = lighting;
     this.state = 'menu';
     this.score = 0;
     this.stars = 0;
@@ -112,8 +114,6 @@ export class AvatarJump {
     this.disposed = false;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#16232e');
-    this.scene.fog = new THREE.Fog('#16232e', 18, 48);
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 8, 14);
 
@@ -147,32 +147,29 @@ export class AvatarJump {
   }
 
   buildScene(style) {
-    this.scene.add(new THREE.HemisphereLight('#cce9f5', '#2a3530', 2.1));
-    const sun = new THREE.DirectionalLight('#ffcf94', 2.6);
-    sun.position.set(-5, 14, 8);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    this.scene.add(sun);
+    applyLighting(this.scene, this.lighting);
 
-    const tealWash = new THREE.PointLight('#35d4ba', 25, 22, 2);
-    tealWash.position.set(-4.5, 6, -1.8);
-    this.scene.add(tealWash);
-
-    const amberWash = new THREE.PointLight('#ff924a', 28, 20, 2);
-    amberWash.position.set(4.5, 7, -1.4);
-    this.scene.add(amberWash);
-
-    const rooftopWash = new THREE.PointLight('#ffd166', 32, 18, 2);
-    rooftopWash.position.set(0, 13.5, 1);
-    this.scene.add(rooftopWash);
+    // Market glow stays on in every time of day, but reads strongest after dark.
+    this.washes = [];
+    const addWash = (color, intensity, x, y, z) => {
+      const light = new THREE.PointLight(color, intensity, 22, 2);
+      light.position.set(x, y, z);
+      this.scene.add(light);
+      this.washes.push({ light, base: intensity });
+      return light;
+    };
+    addWash('#00d98a', 25, -4.5, 6, -1.8);
+    addWash('#ff5722', 28, 4.5, 7, -1.4);
+    addWash('#ffcc00', 32, 0, 13.5, 1);
 
     const haze = new THREE.Mesh(
       new THREE.PlaneGeometry(55, 65),
-      new THREE.MeshBasicMaterial({ color: '#234148', transparent: true, opacity: 0.45 }),
+      new THREE.MeshBasicMaterial({ color: '#3a1f14', transparent: true, opacity: 0.45 }),
     );
     haze.rotation.x = -Math.PI / 2;
     haze.position.set(0, -1.1, -13);
     this.scene.add(haze);
+    this.hazeMaterial = haze.material;
 
     this.buildCourse();
     this.character = createPlayerCharacter(style);
@@ -181,7 +178,7 @@ export class AvatarJump {
 
     this.playerShadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.48, 24),
-      new THREE.MeshBasicMaterial({ color: '#060f12', transparent: true, opacity: 0.4 }),
+      new THREE.MeshBasicMaterial({ color: '#0a0507', transparent: true, opacity: 0.4 }),
     );
     this.playerShadow.rotation.x = -Math.PI / 2;
     this.playerShadow.position.set(0, 0.015, 0);
@@ -190,13 +187,13 @@ export class AvatarJump {
 
   buildCourse() {
     const course = [
-      { x: 0, y: 0, start: true, color: '#25574f', edge: '#f09650' },
-      { x: 1.25, y: 1.8, color: '#b85e35', edge: '#f3c276' },
-      { x: -0.95, y: 3.6, color: '#2a6a62', edge: '#58e3cb' },
+      { x: 0, y: 0, start: true, color: '#1f4a3d', edge: '#f09650' },
+      { x: 1.25, y: 1.8, color: '#c2410c', edge: '#f3c276' },
+      { x: -0.95, y: 3.6, color: '#00a05a', edge: '#2ee08a' },
       { x: 1.05, y: 5.4, color: '#c77f3a', edge: '#ffe596' },
-      { x: -1.1, y: 7.2, color: '#314e60', edge: '#52d1d8' },
+      { x: -1.1, y: 7.2, color: '#2a2436', edge: '#ffd23f' },
       { x: 0.82, y: 9.0, color: '#aa5537', edge: '#fca867' },
-      { x: 0, y: 10.8, finish: true, color: '#204f4a', edge: '#ffd166' },
+      { x: 0, y: 10.8, finish: true, color: '#0b6b4a', edge: '#ffcc00' },
     ];
 
     for (let index = 0; index < course.length; index += 1) {
@@ -307,6 +304,17 @@ export class AvatarJump {
 
   setStyle(style = PREVIEW_STYLE) {
     applyPlayerCharacterStyle(this.character, style);
+  }
+
+  /** Switches the time of day live, without rebuilding the course. */
+  setLighting(id) {
+    if (!LIGHT_PRESETS[id]) return;
+    this.lighting = id;
+    const preset = applyLighting(this.scene, id);
+    // Market glow is subtle in daylight and carries the night.
+    const boost = id === 'night' ? 1.35 : id === 'evening' ? 1.1 : 0.55;
+    this.washes?.forEach(({ light, base }) => { light.intensity = base * boost; });
+    this.hazeMaterial?.color.set(preset.fog);
   }
 
   resize() {
@@ -532,7 +540,7 @@ export class AvatarJump {
       level: (this.platformIndex || 0) + 1,
       type: 'jump',
       resultTitle: this.state === 'won' ? 'Top of the world.' : 'Missed the landing.',
-      resultBody: `${this.stars} stars collected · ${this.score} points`,
+      resultBody: `${this.stars} stars collected Â· ${this.score} points`,
       resultAction: 'Climb again',
     });
   }
