@@ -390,7 +390,7 @@ export class Salubata {
       coins: player.bands,
       best: 0,
       lives: this.players.length,
-      turn: this.playerIndex + 1,
+      turn: (this.state === 'handoff' ? this.pendingPlayerIndex : this.playerIndex) + 1,
       maxTurns: this.players.length,
       round: this.round,
       type: 'salubata',
