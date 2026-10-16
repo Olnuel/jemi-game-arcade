@@ -187,6 +187,8 @@ export class AvatarJump {
     this.buildCourse();
     this.character = createPlayerCharacter(style);
     this.character.position.set(0, PLAYER_FOOT_OFFSET, 0);
+    // The camera watches from +Z, so turn the rig to face the climb instead of the lens.
+    this.character.rotation.y = Math.PI;
     this.scene.add(this.character);
 
     this.playerShadow = new THREE.Mesh(

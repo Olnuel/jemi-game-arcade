@@ -92,8 +92,9 @@ const LINES = {
   },
   'avatar-jump': {
     won: [
-      'You climb am reach! Demolish.',
+      'You climb am reach! E no easy.',
       'Top of the world! You take am.',
+      'You reach the top! Sharp sharp.',
     ],
     lost: [
       'You nearly get there. Try again, you go reach am.',
@@ -104,7 +105,8 @@ const LINES = {
   salubata: {
     won: [
       'Street champion! All the bands gone.',
-      'You clear am! Demolish.',
+      'You clear am! Every band don go.',
+      'Sharp! The circle no get you.',
     ],
     lost: [
       'Your turns don finish, but you nearly get there.',
