@@ -12,14 +12,14 @@ export function addMarketStall(scene, { x, y = 0, z, scale = 1, sign = 'LAGOS', 
   stall.position.set(x, y, z);
   stall.scale.setScalar(scale);
 
-  const wood = material('#523b31');
-  const darkWood = material('#302822');
+  const wood = material('#b96c35');
+  const darkWood = material('#67422c');
   const canvas = material(accent, 0.75, accent, 0.18);
   const counter = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.62, 0.72), wood);
   counter.position.y = 0.47;
   counter.castShadow = true;
   stall.add(counter);
-  const counterTop = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.12, 0.82), material('#d49a61'));
+  const counterTop = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.12, 0.82), material('#ffe08a'));
   counterTop.position.y = 0.84;
   stall.add(counterTop);
 
@@ -33,12 +33,12 @@ export function addMarketStall(scene, { x, y = 0, z, scale = 1, sign = 'LAGOS', 
   canopy.rotation.z = x < 0 ? -0.025 : 0.025;
   canopy.castShadow = true;
   stall.add(canopy);
-  const valance = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.22, 0.1), material('#f2c36d'));
+  const valance = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.22, 0.1), material('#fff0a6'));
   valance.position.set(0, 1.88, 0.39);
   stall.add(valance);
 
   // Crates and vivid produce make the stalls read as street vendors at a glance.
-  const fruitColors = ['#f1b640', '#cf5844', '#57b779', '#ef8050', '#f4d35e'];
+  const fruitColors = ['#ffca05', '#ff6338', '#00a878', '#ef4f9b', '#32a9e8'];
   for (let index = 0; index < 7; index += 1) {
     const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.115, 9, 7), material(fruitColors[index % fruitColors.length], 0.43));
     fruit.position.set(-0.72 + (index % 4) * 0.32, 1.02 + Math.floor(index / 4) * 0.14, 0.05 + (index % 2) * 0.2);
@@ -46,18 +46,18 @@ export function addMarketStall(scene, { x, y = 0, z, scale = 1, sign = 'LAGOS', 
     stall.add(fruit);
   }
 
-  const board = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.34, 0.08), material('#163a37', 0.52, '#26b9a0', 0.45));
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.34, 0.08), material('#075c4b', 0.52, '#52ffd0', 0.7));
   board.position.set(0, 1.62, 0.41);
   stall.add(board);
-  const label = makeLabel(sign, '#f6d49b');
+  const label = makeLabel(sign, '#fff8d9');
   label.position.set(0, 1.62, 0.46);
   label.scale.set(1.02, 0.2, 1);
   stall.add(label);
 
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshBasicMaterial({ color: '#ffc36f' }));
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshBasicMaterial({ color: '#fff4a1' }));
   lamp.position.set(0, 1.8, 0.25);
   stall.add(lamp);
-  const glow = new THREE.PointLight('#ff9b4e', 9, 5, 2);
+  const glow = new THREE.PointLight('#ffbf42', 7, 5, 2);
   glow.position.set(0, 1.82, 0.25);
   stall.add(glow);
 
@@ -73,7 +73,7 @@ export function addStringLights(scene, { start = [-5, 4.1, -3], end = [5, 4.1, -
     const t = index / 12;
     points.push(from.clone().lerp(to, t).add(new THREE.Vector3(0, -Math.sin(t * Math.PI) * 0.7, 0)));
   }
-  const wire = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, 0.018, 5, false), material('#453a31'));
+  const wire = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, 0.018, 5, false), material('#795338'));
   scene.add(wire);
   for (let index = 0; index < count; index += 1) {
     const t = (index + 0.5) / count;
