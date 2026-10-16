@@ -6,6 +6,16 @@ import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const PLAYER_FOOT_OFFSET = 0.56;
 
+export function getFallLimit(platform) {
+  return platform ? platform.userData.top - 2.8 : -2.5;
+}
+
+export function persistBestScore(score, best, storage = globalThis.localStorage) {
+  const nextBest = Math.max(best, score);
+  try { storage?.setItem('arcade:avatar-jump:best', String(nextBest)); } catch {}
+  return nextBest;
+}
+
 function makeStarGeometry() {
   const shape = new THREE.Shape();
   for (let point = 0; point < 10; point += 1) {
@@ -120,7 +130,7 @@ export class AvatarJump {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.14;
@@ -427,10 +437,7 @@ export class AvatarJump {
     if (platform.userData.finish) {
       this.state = 'won';
       sound.playWin();
-      this.best = Math.max(this.best, this.score);
-      try {
-        localStorage.setItem('arcade:avatar-jump:best', String(this.best));
-      } catch {}
+      this.best = persistBestScore(this.score, this.best);
     }
     this.notify();
   }
@@ -490,18 +497,15 @@ export class AvatarJump {
         }
       }
 
-      const fallLimit = currentPlatform ? currentPlatform.userData.top - 2.8 : -2.5;
+      const fallLimit = getFallLimit(currentPlatform);
       if (
         this.character.position.x < -3.2 ||
         this.character.position.x > 3.2 ||
-        this.character.position.y < Math.min(-2.5, fallLimit)
+        this.character.position.y < fallLimit
       ) {
         this.state = 'over';
         sound.playGameOver();
-        this.best = Math.max(this.best, this.score);
-        try {
-          localStorage.setItem('arcade:avatar-jump:best', String(this.best));
-        } catch {}
+        this.best = persistBestScore(this.score, this.best);
         this.notify();
       }
 
