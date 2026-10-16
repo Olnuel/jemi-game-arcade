@@ -219,18 +219,6 @@ export class Salubata {
     this.slipper = null;
   }
 
-  setPlayerCount(count) {
-    if (this.state !== 'menu') return;
-    const nextCount = clamp(Math.floor(Number(count)) || 1, 1, 4);
-    this.playerCount = nextCount;
-    this.players = Array.from({ length: nextCount }, (_, index) => ({
-      name: `Player ${index + 1}`, score: 0, bands: 0,
-    }));
-    this.playerIndex = 0;
-    this.slidePlayerIndex = 0;
-    this.notify();
-  }
-
   start() {
     this.resetSlipper();
     this.state = 'running';
@@ -377,7 +365,7 @@ export class Salubata {
     const leaders = this.players.filter((entry) => entry.bands === highestBandCount);
     const leader = leaders.length === 1 ? leaders[0] : null;
     const label = this.state === 'won' ? 'Circle cleared' : `${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
-    const playerScores = this.players.map((entry, index) => `P${index + 1} ${entry.bands}`).join(' · ');
+    const playerScores = this.players.length === 1 ? `BANDS ${player.bands}` : this.players.map((entry, index) => `P${index + 1} ${entry.bands}`).join(' · ');
     const instructions = this.phase === 'backward-aim'
       ? 'HOLD ↓ / SPACE'
       : this.phase === 'slide-aim'
