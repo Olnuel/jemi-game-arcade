@@ -31,7 +31,7 @@ function createSlipper() {
 }
 
 export class Salubata {
-  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {} } = {}) {
+  constructor(canvas, { style = PREVIEW_STYLE, onChange = () => {}, playerCount = 2 } = {}) {
     this.canvas = canvas;
     this.onChange = onChange;
     this.state = 'menu';
@@ -40,10 +40,10 @@ export class Salubata {
     this.round = 1;
     this.score = 0;
     this.removed = 0;
-    this.players = [
-      { name: 'Player 1', score: 0, bands: 0 },
-      { name: 'Player 2', score: 0, bands: 0 },
-    ];
+    this.playerCount = clamp(Math.floor(playerCount) || 2, 1, 4);
+    this.players = Array.from({ length: this.playerCount }, (_, index) => ({
+      name: `Player ${index + 1}`, score: 0, bands: 0,
+    }));
     this.playerIndex = 0;
     this.slidePlayerIndex = 0;
     this.walkElapsed = 0;
@@ -219,6 +219,18 @@ export class Salubata {
     this.slipper = null;
   }
 
+  setPlayerCount(count) {
+    if (this.state !== 'menu') return;
+    const nextCount = clamp(Math.floor(Number(count)) || 1, 1, 4);
+    this.playerCount = nextCount;
+    this.players = Array.from({ length: nextCount }, (_, index) => ({
+      name: `Player ${index + 1}`, score: 0, bands: 0,
+    }));
+    this.playerIndex = 0;
+    this.slidePlayerIndex = 0;
+    this.notify();
+  }
+
   start() {
     this.resetSlipper();
     this.state = 'running';
@@ -370,9 +382,11 @@ export class Salubata {
   notify() {
     const names = { 'backward-aim': 'Back throw', 'backward-flight': 'Throw airborne', 'slide-aim': 'Aim ground slide', sliding: 'Slipper sliding', 'turn-end': 'Turn complete' };
     const player = this.players[this.state === 'handoff' ? this.pendingPlayerIndex : this.playerIndex];
-    const leader = this.players[0].bands === this.players[1].bands ? null : this.players[0].bands > this.players[1].bands ? this.players[0] : this.players[1];
+    const highestBandCount = Math.max(...this.players.map((entry) => entry.bands));
+    const leaders = this.players.filter((entry) => entry.bands === highestBandCount);
+    const leader = leaders.length === 1 ? leaders[0] : null;
     const label = this.state === 'won' ? 'Circle cleared' : this.state === 'handoff' ? `Pass the phone to ${player.name}` : `${player.name} · ${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
-    const playerScores = `P1 ${this.players[0].bands} · P2 ${this.players[1].bands}`;
+    const playerScores = this.players.map((entry, index) => `P${index + 1} ${entry.bands}`).join(' · ');
     const instructions = this.phase === 'backward-aim'
       ? 'HOLD ↓ / SPACE'
       : this.phase === 'slide-aim'
@@ -398,7 +412,7 @@ export class Salubata {
       phaseLabel: label,
       phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : this.state === 'handoff' ? `${player.name.toUpperCase()} UP NEXT · PASS THE PHONE THEN CONTINUE` : instructions,
       resultTitle: this.state === 'won' ? (leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
-      resultBody: `${this.players[0].name}: ${this.players[0].bands} bands · ${this.players[1].name}: ${this.players[1].bands} bands`,
+      resultBody: this.players.map((entry) => `${entry.name}: ${entry.bands} bands`).join(' · '),
       resultAction: 'Play another match',
     });
   }
