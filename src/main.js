@@ -53,14 +53,14 @@ app.innerHTML = `
     <main class="arcade-layout" id="home">
       <section class="feature" aria-labelledby="game-title">
         <div class="scene-wrap" id="scene-wrap">
-          <canvas id="game-canvas" aria-label="Three-dimensional night street runner preview"></canvas>
+          <canvas id="game-canvas" aria-label="Three-dimensional colourful Lagos arcade preview"></canvas>
           <div class="scene-vignette" aria-hidden="true"></div>
-          <div class="scene-topline"><span class="live-led"></span><span id="scene-caption">LAGOS AFTER DARK</span><span class="scene-rule"></span><span class="scene-index">01 / 03</span></div>
+          <div class="scene-topline"><span class="live-led"></span><span id="scene-caption">LAGOS IN FULL COLOUR</span><span class="scene-rule"></span><span class="scene-index">01 / 03</span></div>
           <div class="scene-copy" id="scene-copy">
-            <div class="street-sign">NIGHT<br/>RUN</div>
+            <div class="street-sign">DANFO<br/>RUN</div>
             <div class="feature-text">
               <h1 id="game-title">Identity<br/><em>Dash</em></h1>
-              <p id="game-description">Dodge the night traffic, clear road barriers, and scoop up coins on the way.</p>
+              <p id="game-description">Take on the bright Lagos streets, dodge traffic, leap over barriers, and collect coins.</p>
               <button class="play-button" id="start-button" type="button">
                 <span>Start running</span><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6 3.8 15 10l-9 6.2z" fill="currentColor"/></svg>
               </button>
