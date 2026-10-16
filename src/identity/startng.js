@@ -11,7 +11,7 @@ function findStartNg() {
 
 export const START_NG = findStartNg();
 
-let connectFrame;
+let connectFrame = null;
 
 function getConnectFrame() {
   connectFrame ??= new Promise((resolve, reject) => {
@@ -19,8 +19,27 @@ function getConnectFrame() {
     frame.src = `${START_NG}/connect`;
     frame.hidden = true;
     frame.title = 'Start.ng sign-in check';
-    frame.addEventListener('load', () => resolve(frame), { once: true });
-    frame.addEventListener('error', reject, { once: true });
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Start.ng connect iframe timed out.'));
+    }, 5000);
+    function cleanup() {
+      clearTimeout(timeout);
+      frame.removeEventListener('load', onLoad);
+      frame.removeEventListener('error', onError);
+      if (frame.parentElement) frame.remove();
+      connectFrame = null;
+    }
+    function onLoad() {
+      clearTimeout(timeout);
+      resolve(frame);
+    }
+    function onError(err) {
+      cleanup();
+      reject(err);
+    }
+    frame.addEventListener('load', onLoad, { once: true });
+    frame.addEventListener('error', onError, { once: true });
     document.body.append(frame);
   });
   return connectFrame;

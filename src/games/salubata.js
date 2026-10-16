@@ -1,8 +1,9 @@
+import { sound } from '../audio/sound.js';
 import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 
-const LANES = [-1.45, 0, 1.45];
+const LANES = [-0.85, 0, 0.85];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 function createSlipper() {
@@ -36,9 +37,15 @@ export class Salubata {
     this.state = 'menu';
     this.phase = 'backward-aim';
     this.turn = 1;
-    this.maxTurns = 4;
+    this.round = 1;
     this.score = 0;
     this.removed = 0;
+    this.players = [
+      { name: 'Player 1', score: 0, bands: 0 },
+      { name: 'Player 2', score: 0, bands: 0 },
+    ];
+    this.playerIndex = 0;
+    this.walkElapsed = 0;
     this.elapsed = 0;
     this.bands = [];
     this.throwStart = null;
@@ -61,8 +68,6 @@ export class Salubata {
     this.resizeObserver.observe(canvas.parentElement);
     this.onKeyDown = (event) => this.handleKeyDown(event);
     this.onKeyUp = (event) => this.handleKeyUp(event);
-    this.onPointerDown = (event) => { event.preventDefault(); this.beginCharge(); };
-    this.onPointerUp = (event) => { event.preventDefault(); this.releaseCharge(); };
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     this.resize();
@@ -97,6 +102,9 @@ export class Salubata {
       line.position.set(x, 0.012, -2.5);
       this.scene.add(line);
     }
+    const throwLine = new THREE.Mesh(new THREE.BoxGeometry(8.15, 0.018, 0.055), new THREE.MeshStandardMaterial({ color: '#cbb88e', roughness: 1 }));
+    throwLine.position.set(0, 0.015, 2.7);
+    this.scene.add(throwLine);
     for (let index = 0; index < 6; index += 1) {
       const z = 1 - index * 3.8;
       addMarketStall(this.scene, { x: -5.15, z, scale: 0.95, sign: index % 2 ? 'SUYA' : 'LAGOS', accent: '#df7848' });
@@ -154,7 +162,9 @@ export class Salubata {
 
   handleKeyDown(event) {
     const key = event.key.toLowerCase();
-    if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'a', 'd', 's', 'w'].includes(key)) event.preventDefault();
+    if (['arrowleft', 'arrowright', 'arrowdown', 'arrowup', ' ', 'a', 'd', 's', 'w'].includes(key)) {
+      if (['running', 'paused'].includes(this.state)) event.preventDefault();
+    }
     if (event.repeat) return;
     if (key === 'arrowleft' || key === 'a') this.move(-1);
     else if (key === 'arrowright' || key === 'd') this.move(1);
@@ -186,8 +196,13 @@ export class Salubata {
     const elapsed = Math.max(0.12, (timeStamp - this.throwStart) / 1000);
     const power = clamp(elapsed / 1.15, 0.12, 1);
     this.throwStart = null;
-    if (this.phase === 'backward-aim') this.throwBackward(power);
-    else if (this.phase === 'slide-aim') this.throwSlide(power);
+    if (this.phase === 'backward-aim') {
+      sound.playJump();
+      this.throwBackward(power);
+    } else if (this.phase === 'slide-aim') {
+      sound.playJump();
+      this.throwSlide(power);
+    }
   }
 
   throwAction() {
@@ -213,8 +228,11 @@ export class Salubata {
     this.state = 'running';
     this.phase = 'backward-aim';
     this.turn = 1;
+    this.round = 1;
     this.score = 0;
     this.removed = 0;
+    this.playerIndex = 0;
+    this.players.forEach((player) => { player.score = 0; player.bands = 0; });
     this.aim = 1;
     this.marker.visible = false;
     this.playerZ = 2.7;
@@ -222,6 +240,29 @@ export class Salubata {
     this.character.position.set(this.playerX, 0.55, this.playerZ);
     this.bands.forEach((band) => { band.removed = false; band.mesh.visible = true; });
     this.lastFrame = performance.now();
+    this.notify();
+  }
+
+  returnToMenu() {
+    this.resetSlipper();
+    this.state = 'menu';
+    this.phase = 'backward-aim';
+    this.turn = 1;
+    this.round = 1;
+    this.score = 0;
+    this.removed = 0;
+    this.playerIndex = 0;
+    this.marker.visible = false;
+    this.character.position.set(0, 0.55, 2.7);
+    this.playerZ = 2.7;
+    this.playerX = 0;
+    this.aim = 1;
+    this.camera.position.set(0, 10, 16);
+    this.camera.lookAt(0, 0.8, 0);
+    this.bands.forEach((band) => {
+      band.removed = false;
+      band.mesh.visible = true;
+    });
     this.notify();
   }
 
@@ -233,7 +274,9 @@ export class Salubata {
     this.slipper = createSlipper();
     this.slipper.position.set(this.character.position.x, 0.16, this.character.position.z - 0.65);
     this.scene.add(this.slipper);
-    this.slipperVelocity = { x: (this.aim - 1) * (0.45 + power * 0.65), y: 2.5 + power * 2.1, z: 2.7 + power * 2.2 };
+    // The low end still clears the starting mark; tumble adds a little uncertainty to the landing.
+    const wobble = (Math.random() - 0.5) * 0.3;
+    this.slipperVelocity = { x: (this.aim - 1) * (0.45 + power * 0.65) + wobble, y: 2.5 + power * 2.1, z: 2.7 + power * 2.2 + Math.abs(wobble) };
     this.flightElapsed = 0;
     this.notify();
   }
@@ -243,9 +286,9 @@ export class Salubata {
     this.slidePower = power;
     this.slideSpeed = 7 + power * 7.1;
     this.slidePrevZ = this.slipper.position.z;
-    this.slipper.position.x = LANES[this.aim];
+    const aimOffset = (this.aim - 1) * 0.42;
+    this.slipperVelocity = { x: aimOffset * this.slideSpeed * 0.16, y: 0, z: -this.slideSpeed };
     this.slipper.rotation.x = -Math.PI / 2;
-    this.slipperVelocity = { x: 0, y: 0, z: -this.slideSpeed };
     this.marker.visible = false;
     this.notify();
   }
@@ -253,11 +296,13 @@ export class Salubata {
   landBackwardThrow() {
     this.slipper.position.y = 0.04;
     this.slipperVelocity = { x: 0, y: 0, z: 0 };
-    this.phase = 'slide-aim';
+    this.phase = 'walking';
     this.aim = 1;
-    this.playerZ = this.slipper.position.z + 0.62;
-    this.playerX = this.slipper.position.x;
-    this.character.position.set(this.playerX, 0.55, this.playerZ);
+    this.walkElapsed = 0;
+    this.walkFrom = this.character.position.clone();
+    this.walkTo = new THREE.Vector3(this.slipper.position.x, 0.55, this.slipper.position.z + 0.62);
+    this.playerZ = this.walkTo.z;
+    this.playerX = this.walkTo.x;
     this.marker.position.set(this.slipper.position.x, 0.035, this.slipper.position.z);
     this.marker.visible = true;
     this.notify();
@@ -267,15 +312,13 @@ export class Salubata {
     this.phase = 'turn-end';
     if (this.removed === this.bands.length) {
       this.state = 'won';
+      sound.playStart();
       this.notify();
       return;
     }
-    if (this.turn >= this.maxTurns) {
-      this.state = 'over';
-      this.notify();
-      return;
-    }
-    this.turn += 1;
+    this.playerIndex = (this.playerIndex + 1) % this.players.length;
+    if (this.playerIndex === 0) this.round += 1;
+    this.turn = this.playerIndex + 1;
     this.resetSlipper();
     this.character.position.set(0, 0.55, 2.7);
     this.playerZ = 2.7;
@@ -296,8 +339,18 @@ export class Salubata {
       this.slipper.position.y += this.slipperVelocity.y * dt;
       this.slipper.rotation.z += dt * 5;
       if (this.slipper.position.y <= 0.13 && this.flightElapsed > 0.25) this.landBackwardThrow();
+    } else if (this.state === 'running' && this.phase === 'walking') {
+      this.walkElapsed += dt;
+      const progress = Math.min(1, this.walkElapsed / 0.7);
+      const eased = progress * progress * (3 - 2 * progress);
+      this.character.position.lerpVectors(this.walkFrom, this.walkTo, eased);
+      if (progress >= 1) {
+        this.phase = 'slide-aim';
+        this.notify();
+      }
     } else if (this.state === 'running' && this.phase === 'sliding') {
       this.slidePrevZ = this.slipper.position.z;
+      this.slipper.position.x += this.slipperVelocity.x * dt;
       this.slipper.position.z += this.slipperVelocity.z * dt;
       this.slideSpeed = Math.max(0, this.slideSpeed - 4.1 * dt);
       this.slipperVelocity.z = -this.slideSpeed;
@@ -311,33 +364,61 @@ export class Salubata {
           band.mesh.geometry.dispose();
           band.mesh.material.dispose();
           this.removed += 1;
-          this.score += 100;
+          sound.playCoin();
+          const player = this.players[this.playerIndex];
+          player.bands += 1;
+          player.score += 100;
+          this.score = player.score;
           this.notify();
         }
       }
       if (this.slideSpeed <= 0 || this.slipper.position.z < -6) this.finishSlide();
     }
-    animatePlayerCharacter(this.character, this.elapsed, this.state === 'running' && this.phase.includes('flight'));
+    animatePlayerCharacter(this.character, this.elapsed, this.state === 'running' && ['backward-flight', 'walking'].includes(this.phase));
     this.playerShadow.position.x = this.character.position.x;
     this.playerShadow.position.z = this.character.position.z;
     if (this.slipper && this.phase === 'sliding') this.slipper.position.y = 0.04;
-    this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, this.character.position.x * 0.12, 2.8, dt);
-    this.camera.lookAt(0, 0.8, 0);
+    const sliding = this.phase === 'sliding' && this.slipper;
+    this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, sliding ? this.slipper.position.x * 0.55 : this.character.position.x * 0.12, 2.8, dt);
+    this.camera.position.y = THREE.MathUtils.damp(this.camera.position.y, sliding ? 4.6 : 10, 2.5, dt);
+    this.camera.position.z = THREE.MathUtils.damp(this.camera.position.z, sliding ? this.slipper.position.z + 7 : 16, 2.5, dt);
+    this.camera.lookAt(0, sliding ? 0.25 : 0.8, sliding ? this.slipper.position.z - 2.2 : 0);
   }
 
   notify() {
     const names = { 'backward-aim': 'Back throw', 'backward-flight': 'Throw airborne', 'slide-aim': 'Aim ground slide', sliding: 'Slipper sliding', 'turn-end': 'Turn complete' };
-    const label = this.state === 'won' ? 'All bands cleared' : this.state === 'over' ? 'Turns used' : `${names[this.phase]} · turn ${this.turn}/${this.maxTurns}`;
-    const phaseText = this.phase === 'backward-aim'
-      ? 'HOLD ↓ / SPACE · RELEASE TO THROW BACK'
+    const player = this.players[this.playerIndex];
+    const leader = this.players[0].bands === this.players[1].bands ? null : this.players[0].bands > this.players[1].bands ? this.players[0] : this.players[1];
+    const label = this.state === 'won' ? 'Circle cleared' : `${player.name} · ${names[this.phase] || 'Walk to mark'} · round ${this.round}`;
+    const playerScores = `P1 ${this.players[0].bands} · P2 ${this.players[1].bands}`;
+    const instructions = this.phase === 'backward-aim'
+      ? 'HOLD ↓ / SPACE'
       : this.phase === 'slide-aim'
-        ? '← / → TO AIM · HOLD ↑ / SPACE · RELEASE TO SLIDE'
+        ? '← / → · HOLD ↑ / SPACE'
         : this.phase === 'backward-flight'
-          ? 'SLIPPER AIRBORNE · LANDING SETS THROWING MARK'
-          : this.phase === 'sliding'
-            ? 'SLIDE THE SLIPPER THROUGH THE RUBBER BANDS'
-            : '';
-    this.onChange({ state: this.state, score: this.score, coins: this.removed, best: 0, lives: this.maxTurns - this.turn + 1, turn: this.turn, maxTurns: this.maxTurns, type: 'salubata', phase: this.phase, phaseLabel: label, phaseText, resultTitle: this.state === 'won' ? 'Street champion.' : 'One more round next time.', resultBody: `${this.removed} bands cleared · ${this.score} points · ${this.turn}/${this.maxTurns} turns`, resultAction: 'Play another round' });
+          ? 'SLIPPER AIRBORNE · LANDING MARK'
+          : this.phase === 'walking'
+            ? 'WALKING TO THE MARK'
+            : this.phase === 'sliding'
+              ? 'SLIPPER SLIDING'
+              : '';
+    this.onChange({
+      state: this.state,
+      score: player.score,
+      coins: player.bands,
+      best: 0,
+      lives: this.players.length,
+      turn: this.playerIndex + 1,
+      maxTurns: this.players.length,
+      round: this.round,
+      type: 'salubata',
+      phase: this.phase,
+      phaseLabel: label,
+      phaseText: this.state === 'running' ? `${playerScores}  ·  ${instructions}` : instructions,
+      resultTitle: this.state === 'won' ? (leader ? `${leader.name} wins!` : 'A perfect tie!') : 'The match is complete.',
+      resultBody: `${this.players[0].name}: ${this.players[0].bands} bands · ${this.players[1].name}: ${this.players[1].bands} bands`,
+      resultAction: 'Play another match',
+    });
   }
 
   frame(now) {

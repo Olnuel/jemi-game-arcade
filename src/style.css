@@ -202,7 +202,6 @@ body.game-fullscreen .feature { display: block; }
   .coin-mark { width: 19px; height: 19px; font-size: 9px; }
   .life-stat strong { font-size: 10px; }
   .pause-button { width: 33px; height: 33px; }
-  .touch-controls { display: flex; }
   .feature-foot { min-height: 54px; }
   .feature-caption { font-size: 9px; }
   .feature-best { gap: 7px; }
@@ -235,4 +234,44 @@ body.game-fullscreen .feature { display: block; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+@media (pointer: coarse) {
+  .touch-controls { display: flex; }
+}
+
+.hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sound-button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #72817a;
+  border-radius: 50%;
+  background: #18211f;
+  color: #f3efe5;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.sound-button:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+.sound-button svg {
+  width: 18px;
+  height: 18px;
+}
+.sound-button.is-muted {
+  color: #8c9892;
+  border-color: #49544f;
+}
+@media (max-width: 930px) {
+  .sound-button { width: 33px; height: 33px; }
+  .sound-button svg { width: 16px; height: 16px; }
 }
