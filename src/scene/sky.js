@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { QUALITY } from '../render-quality.js';
 
 /**
  * Time-of-day lighting for the arcade. One shared sky, sun, fog and hemisphere
@@ -135,7 +136,9 @@ export function applyLighting(scene, id = DEFAULT_LIGHTING) {
     sun = new THREE.DirectionalLight(preset.sun, preset.sunIntensity);
     sun.name = 'sky-sun';
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    // Was a fixed 1024 on every device. Halving it quarters the shadow pass, which is
+    // the cheapest visual compromise available on a phone.
+    sun.shadow.mapSize.set(QUALITY.shadowMapSize, QUALITY.shadowMapSize);
     scene.add(sun);
     scene.add(sun.target);
   }

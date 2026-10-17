@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { QUALITY, createFrameGovernor, rendererOptions } from '../render-quality.js';
 import { difficultyFor, recordDifficulty } from '../difficulty.js';
 
 const LANES = [-0.85, 0, 0.85];
@@ -53,10 +54,10 @@ export class Salubata {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 10, 16);
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+    this.renderer = new THREE.WebGLRenderer(rendererOptions(canvas));
+    this.governPixelRatio = createFrameGovernor((ratio) => this.renderer.setPixelRatio(ratio));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = QUALITY.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
@@ -417,6 +418,7 @@ export class Salubata {
     const dt = Math.min(0.04, Math.max(0, (now - this.lastFrame) / 1000));
     this.lastFrame = now;
     this.update(dt);
+    this.governPixelRatio(dt);
     this.renderer.render(this.scene, this.camera);
     this.animationFrame = requestAnimationFrame(this.frame);
   }
