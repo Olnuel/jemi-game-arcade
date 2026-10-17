@@ -686,7 +686,7 @@ export class IdentityDash {
 
     this.playerShadow.position.x = this.character.position.x;
     this.playerShadow.material.opacity = 0.38 - Math.min(0.2, this.character.position.y * 0.12);
-    animatePlayerCharacter(this.character, this.elapsed, running || this.state === 'menu');
+    animatePlayerCharacter(this.character, this.elapsed, running || this.state === 'menu', running ? this.speed : 0);
 
     for (const mark of this.roadMarks) {
       if (running) mark.position.z += this.speed * dt;
