@@ -4,9 +4,26 @@ import { addMarketStall, addStringLights } from '../scene/lagos-night-market.js'
 import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
 import { difficultyFor, recordDifficulty } from '../difficulty.js';
 import { sound } from '../audio/sound.js';
+import { QUALITY, createFrameGovernor, rendererOptions } from '../render-quality.js';
 
 const LANES = [-1.55, 0, 1.55];
 const randomLane = () => Math.floor(Math.random() * LANES.length);
+
+// Movement feel, in seconds and world units. A jump is a half-sine arc rather than
+// integrated gravity, which keeps the arc identical at any frame rate and lets the
+// clear window be reasoned about exactly. The second jump starts from wherever the
+// first one got to, so a late double jump still gains height instead of snapping
+// back to the ground.
+const JUMP_TIME = 0.72;
+const JUMP_PEAK = 1.05;
+const DOUBLE_JUMP_TIME = 0.56;
+const DOUBLE_JUMP_PEAK = 0.78;
+const ROLL_TIME = 0.46;
+// Ducking lowers the rig and squashes it; a standing runner is about 1.45 tall.
+const ROLL_DROP = -0.22;
+const ROLL_SQUASH = 0.58;
+// A hurdle clears once the runner is above its crossbar.
+const HURDLE_CLEAR_Y = 0.48;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 function createDanfoBus() {
@@ -118,6 +135,36 @@ function createCrate() {
   return crate;
 }
 
+// A market banner strung between two posts. The board hangs from 0.85 to 1.7, so a
+// standing runner's head is in it and a jumping one passes straight through it at
+// chest height. Ducking is the only way through, which is what makes it a second
+// verb rather than a taller hurdle.
+function createGantry() {
+  const gantry = new THREE.Group();
+  const boardMat = new THREE.MeshStandardMaterial({ color: '#e55229', roughness: 0.58, metalness: 0.08 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: '#dca45a', roughness: 0.6 });
+  const postMat = new THREE.MeshStandardMaterial({ color: '#262c2e', roughness: 0.8 });
+
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.85, 0.1), boardMat);
+  board.position.y = 1.275;
+  board.castShadow = true;
+  gantry.add(board);
+
+  // Gold hem along the bottom edge, which is the line the duck has to clear.
+  const hem = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.1, 0.12), trimMat);
+  hem.position.y = 0.9;
+  gantry.add(hem);
+
+  [-0.6, 0.6].forEach((x) => {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.7, 0.1), postMat);
+    post.position.set(x, 0.85, 0);
+    post.castShadow = true;
+    gantry.add(post);
+  });
+
+  return gantry;
+}
+
 function createCoinMesh() {
   const coinGroup = new THREE.Group();
   const coinMat = new THREE.MeshStandardMaterial({
@@ -149,6 +196,14 @@ export class IdentityDash {
     this.lane = 1;
     this.targetLane = 1;
     this.jumpTime = 0;
+    this.jumpCount = 0;
+    this.jumpDuration = JUMP_TIME;
+    this.jumpPeak = JUMP_PEAK;
+    this.jumpBaseY = 0;
+    this.fastFalling = false;
+    this.rollTime = 0;
+    this.gapRecovery = 0;
+    this.lastPattern = '';
     this.elapsed = 0;
     this.difficulty = difficultyFor('identity-dash');
     this.speed = this.difficulty.dashSpeed;
@@ -164,10 +219,10 @@ export class IdentityDash {
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+    this.renderer = new THREE.WebGLRenderer(rendererOptions(canvas));
+    this.governPixelRatio = createFrameGovernor((ratio) => this.renderer.setPixelRatio(ratio));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = QUALITY.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
@@ -344,6 +399,7 @@ export class IdentityDash {
     if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') this.move(-1);
     else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') this.move(1);
     else if (event.key === 'ArrowUp' || event.key === ' ' || event.key.toLowerCase() === 'w') this.jump();
+    else if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') this.duck();
     else if (event.key === 'Escape') this.state === 'running' ? this.pause() : this.state === 'paused' ? this.resume() : null;
     else if ((event.key === 'Enter' || event.key.toLowerCase() === 'r') && ['over', 'won'].includes(this.state)) this.start();
     else if (event.key === 'Enter' && this.state === 'menu') this.start();
@@ -362,6 +418,7 @@ export class IdentityDash {
     if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
     if (Math.abs(dx) > Math.abs(dy)) this.move(dx > 0 ? 1 : -1);
     else if (dy < 0) this.jump();
+    else this.duck();
   }
 
   move(direction) {
@@ -369,48 +426,120 @@ export class IdentityDash {
     this.targetLane = clamp(this.targetLane + direction, 0, 2);
   }
 
+  // One jump from the ground, a second from anywhere in the air. The second arc is
+  // measured from wherever the first jump reached, so tapping jump late still gains
+  // height instead of dropping the runner back to the tarmac.
   jump() {
-    if (this.state !== 'running' || this.jumpTime > 0) return;
-    this.jumpTime = 0.72;
+    if (this.state !== 'running') return;
+    // A jump outranks a duck, so pressing up mid-duck gets you out of it.
+    this.rollTime = 0;
+    if (this.jumpCount >= 2) return;
+    this.jumpCount += 1;
+    this.jumpBaseY = this.character.position.y;
+    this.jumpDuration = this.jumpCount === 1 ? JUMP_TIME : DOUBLE_JUMP_TIME;
+    this.jumpPeak = this.jumpCount === 1 ? JUMP_PEAK : DOUBLE_JUMP_PEAK;
+    this.jumpTime = this.jumpDuration;
+    this.fastFalling = false;
     sound.playJump();
   }
 
-  spawnObstacleRow() {
-    const rand = Math.random();
-    // 38% Danfo minibus, 38% Hurdle, 24% Market Crate
-    const primaryKind = rand < 0.38 ? 'danfo' : rand < 0.76 ? 'hurdle' : 'crate';
-    const primaryLane = randomLane();
+  // Down is context sensitive: on the ground it ducks under a banner, in the air it
+  // drops fast, so a jump that was mistimed stays recoverable.
+  duck() {
+    if (this.state !== 'running') return;
+    if (this.jumpTime > 0) {
+      this.fastFalling = true;
+      return;
+    }
+    if (this.rollTime > 0) return;
+    this.rollTime = ROLL_TIME;
+  }
 
-    // At higher speeds, occasionally spawn 2 obstacles, but guarantee at least one lane is safe or jumpable
-    const spawnDouble = this.speed > 9.5 + this.difficulty.dashSpeed && Math.random() < 0.38;
-    const lanesToSpawn = [primaryLane];
-    if (spawnDouble) {
-      const secondLane = (primaryLane + (Math.random() < 0.5 ? 1 : 2)) % 3;
-      lanesToSpawn.push(secondLane);
+  // The gap between rows is a distance that closes as the run speeds up, divided by
+  // the current speed to get a time. Holding it as a distance keeps the world spacing
+  // honest at every speed, so the gap visibly tightens instead of drifting open.
+  nextRowInterval() {
+    const span = Math.max(0.001, this.difficulty.dashCap - this.difficulty.dashSpeed);
+    const ramp = clamp((this.speed - this.difficulty.dashSpeed) / span, 0, 1);
+    const gap = THREE.MathUtils.lerp(this.difficulty.dashGapOpen, this.difficulty.dashGapTight, ramp);
+    // The row after one that demanded a verb gets extra room to finish it and land.
+    const spacing = gap * (this.gapRecovery > 0 ? 1.35 : 1);
+    return Math.max(0.42, spacing / this.speed) + Math.random() * 0.18;
+  }
+
+  // Rows come from a small set of hand-checked patterns instead of scattered at
+  // random. Each one leaves at least one way through, and the patterns that demand a
+  // specific verb are only offered once the run is quick enough to be interesting.
+  pickPattern() {
+    const span = Math.max(0.001, this.difficulty.dashCap - this.difficulty.dashSpeed);
+    const ramp = clamp((this.speed - this.difficulty.dashSpeed) / span, 0, 1);
+    const options = ['single', 'single', 'double'];
+    if (ramp > 0.2) options.push('double');
+    if (ramp > 0.35) options.push('hurdle-wall');
+    if (ramp > 0.45) options.push('banner-wall');
+    if (ramp > 0.7) options.push('banner-and-hurdle');
+    if (this.lastPattern !== 'single') options.push('single');
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  spawnObstacleRow() {
+    const pattern = this.pickPattern();
+    this.lastPattern = pattern;
+    // A row that needs a jump or a duck has to leave room to finish the verb and land
+    // before the next row shows up, so the row after one is spaced wider.
+    this.gapRecovery = pattern === 'hurdle-wall' || pattern === 'banner-wall' || pattern === 'banner-and-hurdle' ? 1 : 0;
+
+    const plan = new Map();
+    const order = [0, 1, 2].sort(() => Math.random() - 0.5);
+    const blocker = () => (Math.random() < 0.42 ? 'danfo' : Math.random() < 0.55 ? 'crate' : 'hurdle');
+
+    if (pattern === 'single') {
+      plan.set(order[0], Math.random() < 0.5 ? 'hurdle' : blocker());
+    } else if (pattern === 'double') {
+      // One lane always stays open, so the row is a choice rather than a wall.
+      plan.set(order[0], blocker());
+      plan.set(order[1], blocker());
+    } else if (pattern === 'hurdle-wall') {
+      order.forEach((l) => plan.set(l, 'hurdle'));
+    } else if (pattern === 'banner-wall') {
+      order.forEach((l) => plan.set(l, 'gantry'));
+    } else {
+      // Duck past the banners, or commit and clear the hurdle.
+      plan.set(order[0], 'hurdle');
+      plan.set(order[1], 'gantry');
+      plan.set(order[2], 'gantry');
     }
 
-    lanesToSpawn.forEach((lane, idx) => {
-      // If spawning two obstacles, ensure at least one is a jumpable hurdle to guarantee a fair route
-      const kind = (idx === 1 && primaryKind !== 'hurdle') ? 'hurdle' : primaryKind;
-      let mesh;
-      if (kind === 'danfo') mesh = createDanfoBus();
-      else if (kind === 'hurdle') mesh = createHurdle();
-      else mesh = createCrate();
-
+    plan.forEach((kind, lane) => {
+      const mesh = kind === 'danfo' ? createDanfoBus()
+        : kind === 'hurdle' ? createHurdle()
+        : kind === 'gantry' ? createGantry()
+        : createCrate();
       mesh.position.set(LANES[lane], 0, -42);
       this.scene.add(mesh);
       this.items.push({ type: 'obstacle', kind, lane, mesh, hit: false });
     });
 
-    // Spawn coin trail in an unblocked safe lane
-    const safeLanes = [0, 1, 2].filter((l) => !lanesToSpawn.includes(l));
-    const coinLane = safeLanes.length ? safeLanes[Math.floor(Math.random() * safeLanes.length)] : randomLane();
+    const freeLanes = [0, 1, 2].filter((l) => !plan.has(l));
     const trailLength = Math.random() < 0.4 ? 4 : 3;
-    for (let i = 0; i < trailLength; i += 1) {
-      const coin = createCoinMesh();
-      coin.position.set(LANES[coinLane], 0.72, -38 - i * 1.25);
-      this.scene.add(coin);
-      this.items.push({ type: 'coin', lane: coinLane, mesh: coin, collected: false });
+    const addTrail = (lane, y, startZ, step) => {
+      for (let i = 0; i < trailLength; i += 1) {
+        const coin = createCoinMesh();
+        coin.position.set(LANES[lane], y, startZ - i * step);
+        this.scene.add(coin);
+        this.items.push({ type: 'coin', lane, mesh: coin, collected: false });
+      }
+    };
+
+    if (freeLanes.length) {
+      // Coins sit in an open lane, so the trail shows the safe line through the row.
+      addTrail(freeLanes[Math.floor(Math.random() * freeLanes.length)], 0.72, -38, 1.25);
+    } else if (pattern === 'hurdle-wall') {
+      // Lifted over the barrier: the reward for jumping is the coins above it.
+      addTrail(randomLane(), 1.5, -40, 1.3);
+    } else {
+      // Low and past the banner: the reward for ducking is what is underneath it.
+      addTrail(randomLane(), 0.42, -46, 1.3);
     }
   }
 
@@ -427,6 +556,14 @@ export class IdentityDash {
     this.lane = 1;
     this.targetLane = 1;
     this.jumpTime = 0;
+    this.jumpCount = 0;
+    this.jumpDuration = JUMP_TIME;
+    this.jumpPeak = JUMP_PEAK;
+    this.jumpBaseY = 0;
+    this.fastFalling = false;
+    this.rollTime = 0;
+    this.gapRecovery = 0;
+    this.lastPattern = '';
     this.elapsed = 0;
     this.speed = this.difficulty.dashSpeed;
     this.spawnTimer = 0.5;
@@ -443,7 +580,12 @@ export class IdentityDash {
     this.lane = 1;
     this.targetLane = 1;
     this.jumpTime = 0;
+    this.jumpCount = 0;
+    this.jumpBaseY = 0;
+    this.fastFalling = false;
+    this.rollTime = 0;
     this.character.position.set(0, FOOT_Y, 2.15);
+    this.character.scale.set(1, 1, 1);
     this.character.visible = true;
     this.camera.position.set(0, 5.2, 8.8);
     this.camera.lookAt(0, 0.9, -4);
@@ -511,16 +653,37 @@ export class IdentityDash {
     }
 
     this.lane += (this.targetLane - this.lane) * Math.min(1, dt * 12);
-    this.character.position.x = LANES[Math.round(this.lane)] + (LANES[this.targetLane] - LANES[Math.round(this.lane)]) * Math.min(1, Math.abs(this.lane - Math.round(this.lane)) * 2);
+    // The damp is the whole of the lateral movement; the lane index only picks which
+    // lane to settle into.
     this.character.position.x = THREE.MathUtils.damp(this.character.position.x, LANES[this.targetLane], 11, dt);
 
+    if (this.rollTime > 0) this.rollTime = Math.max(0, this.rollTime - dt);
+
     if (this.jumpTime > 0) {
-      this.jumpTime = Math.max(0, this.jumpTime - dt);
-      const progress = 1 - this.jumpTime / 0.72;
-      this.character.position.y = Math.sin(progress * Math.PI) * 1.05;
+      // Fast fall accelerates the existing arc instead of teleporting the runner down,
+      // so the descent still reads as the same jump.
+      this.jumpTime = Math.max(0, this.jumpTime - dt * (this.fastFalling ? 2.6 : 1));
+      const progress = 1 - this.jumpTime / this.jumpDuration;
+      this.character.position.y = this.jumpBaseY + Math.sin(progress * Math.PI) * this.jumpPeak;
     } else {
       this.character.position.y = 0;
+      this.jumpCount = 0;
+      this.jumpBaseY = 0;
+      this.fastFalling = false;
     }
+    if (this.jumpTime === 0) {
+      this.character.position.y = 0;
+      this.jumpCount = 0;
+      this.jumpBaseY = 0;
+      this.fastFalling = false;
+    }
+
+    // Ducking drops and squashes the rig so a banner hangs over it.
+    const duckTarget = this.rollTime > 0 && this.jumpTime === 0 ? 1 : 0;
+    this.duckBlend = THREE.MathUtils.damp(this.duckBlend || 0, duckTarget, 18, dt);
+    this.character.position.y += ROLL_DROP * this.duckBlend;
+    this.character.scale.set(1, 1 - (1 - ROLL_SQUASH) * this.duckBlend, 1);
+
     this.playerShadow.position.x = this.character.position.x;
     this.playerShadow.material.opacity = 0.38 - Math.min(0.2, this.character.position.y * 0.12);
     animatePlayerCharacter(this.character, this.elapsed, running || this.state === 'menu');
@@ -530,12 +693,12 @@ export class IdentityDash {
       if (mark.position.z > 5) mark.position.z -= 67.2;
     }
     if (running) {
-      this.speed = Math.min(18.5, this.speed + dt * this.difficulty.dashRamp);
+      this.speed = Math.min(this.difficulty.dashCap, this.speed + dt * this.difficulty.dashRamp);
       this.score += dt * this.speed * 2.2;
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         this.spawnObstacleRow();
-        this.spawnTimer = Math.max(0.72, this.difficulty.dashSpawn - (this.speed - this.difficulty.dashSpeed) * 0.045) + Math.random() * 0.28;
+        this.spawnTimer = this.nextRowInterval();
       }
     }
 
@@ -554,9 +717,12 @@ export class IdentityDash {
           this.notify();
         }
       } else if (running && !item.hit && item.lane === this.targetLane && Math.abs(item.mesh.position.z - 2.15) < 0.82) {
-        const clearedHurdle = item.kind === 'hurdle' && this.character.position.y > 0.48;
-        if (clearedHurdle) {
-          // cleanly cleared the hurdle
+        // A hurdle is jumped and a banner is ducked. Nothing else gets through, and
+        // neither verb works on the other obstacle, so each row has one honest answer.
+        const clearedHurdle = item.kind === 'hurdle' && this.character.position.y > HURDLE_CLEAR_Y;
+        const clearedBanner = item.kind === 'gantry' && this.rollTime > 0;
+        if (clearedHurdle || clearedBanner) {
+          // cleanly cleared the row
         } else {
           item.hit = true;
           item.mesh.visible = false;
@@ -587,6 +753,7 @@ export class IdentityDash {
     const dt = Math.min(0.045, (now - this.lastFrame) / 1000 || 0);
     this.lastFrame = now;
     this.update(dt);
+    this.governPixelRatio(dt);
     this.renderer.render(this.scene, this.camera);
     if (this.state === 'running') this.notify();
     this.animationFrame = requestAnimationFrame(this.frame);

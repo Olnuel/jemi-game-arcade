@@ -407,7 +407,16 @@ export function animatePlayerCharacter(character, elapsed, moving = true) {
   if (!human) return;
   const { hips, spine, head, arms, legs, sw, hipY, shoulderY, female } = human;
   const t = elapsed;
-  const speed = moving ? Math.min(1, character.userData.moveAmount ?? 1) : 0;
+
+  // Blend between idle and the walk cycle on real frame time. This used to latch: one
+  // paused frame wrote moveAmount as 0, and min(1, 0) could never climb back out, so a
+  // single pause left the runner walking on the spot for the rest of the visit.
+  const stamped = character.userData.moveStamp ?? t;
+  const step = Math.min(0.05, Math.max(0, t - stamped));
+  character.userData.moveStamp = t;
+  const target = moving ? 1 : 0;
+  const held = typeof character.userData.moveAmount === 'number' ? character.userData.moveAmount : 1;
+  const speed = held + (target - held) * Math.min(1, step * (moving ? 8 : 9));
   character.userData.moveAmount = speed;
 
   const stride = Math.sin(t * 9.5);
