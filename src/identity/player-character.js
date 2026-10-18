@@ -398,50 +398,145 @@ export function applyPlayerCharacterStyle(character, styleInput) {
   animatePlayerCharacter(character, 0, moving);
 }
 
+// A gait, rather than a sine wave. Two things make a sine read as a machine: the leg
+// takes the same time going forward as coming back, and the knee is driven by a
+// rectified half wave, so it snaps in and out instead of folding. Here the foot is
+// planted for most of the cycle and swings back through in the rest, and the knee
+// stays straight while it is carrying weight and folds only through the swing, which
+// is the only time it has to clear the ground.
+const GAIT_STANCE = 0.62;
+const GAIT_STRIDE = 3.0;          // world units travelled per full cycle
+const GAIT_MIN_CYCLES = 2.2;      // a jog
+const GAIT_MAX_CYCLES = 5.2;      // a sprint, and the ceiling we stop at
+const GAIT_HIP = 0.62;
+const GAIT_KNEE = 0.95;
+
+const smoothstep = (t) => t * t * (3 - 2 * t);
+// smoothstep is only a curve on 0..1; fed a negative it grows without bound, which
+// was hyperextending the knee backwards through most of the stance.
+const smoothstep01 = (t) => smoothstep(Math.min(1, Math.max(0, t)));
+const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
+
+/** Hip and knee angles, in radians, for one leg at cycle phase p in [0, 1). */
+function legPose(p, hipAmp, kneeAmp) {
+  if (p < GAIT_STANCE) {
+    const t = p / GAIT_STANCE;
+    // Planted: the hip carries the body forward over the foot, so it travels back.
+    // The knee stays locked under load and only tucks a little for the push off.
+    return [hipAmp * (1 - 2 * smoothstep(t)), kneeAmp * 0.18 * smoothstep01((t - 0.62) / 0.38)];
+  }
+  const t = (p - GAIT_STANCE) / (1 - GAIT_STANCE);
+  // Swinging: the hip accelerates through the middle and the knee peaks there.
+  return [hipAmp * (-1 + 2 * smoothstep(t)), kneeAmp * Math.sin(Math.PI * t)];
+}
+
 /**
- * Drives the figure. `moving` blends between a breathing idle and a full walk cycle
- * with counter-swinging arms, hip roll and a slight forward lean.
+ * Drives the figure. `moving` blends between a breathing idle and a full run, and
+ * `groundSpeed` is how fast the character is actually travelling, so the stride
+ * lengthens with the road instead of the legs spinning at a fixed rate.
  */
-export function animatePlayerCharacter(character, elapsed, moving = true) {
+export function animatePlayerCharacter(character, elapsed, moving = true, groundSpeed = 0) {
   const human = character?.userData?.human;
   if (!human) return;
   const { hips, spine, head, arms, legs, sw, hipY, shoulderY, female } = human;
   const t = elapsed;
-  const speed = moving ? Math.min(1, character.userData.moveAmount ?? 1) : 0;
+
+  // Blend between idle and the run on real frame time. This used to latch: one
+  // paused frame wrote moveAmount as 0, and min(1, 0) could never climb back out, so a
+  // single pause left the runner walking on the spot for the rest of the visit.
+  const stamped = character.userData.moveStamp ?? t;
+  const step = Math.min(0.05, Math.max(0, t - stamped));
+  character.userData.moveStamp = t;
+  const target = moving ? 1 : 0;
+  const held = typeof character.userData.moveAmount === 'number' ? character.userData.moveAmount : 1;
+  const speed = held + (target - held) * Math.min(1, step * (moving ? 8 : 9));
   character.userData.moveAmount = speed;
 
-  const stride = Math.sin(t * 9.5);
+  // Cadence follows real travel speed, so running faster lengthens the stride.
+  const cadence = Math.min(GAIT_MAX_CYCLES, Math.max(GAIT_MIN_CYCLES, (groundSpeed || GAIT_STRIDE * 3) / GAIT_STRIDE));
+  const phase = ((((character.userData.gait ?? 0) + cadence * step) % 1) + 1) % 1;
+  character.userData.gait = phase;
+
+  const left = phase;
+  const right = (phase + 0.5) % 1;
   const idleShift = Math.sin(t * 0.7);
 
   // idle layer
   hips.position.x = idleShift * 0.012 * (1 - speed);
-  hips.rotation.z = idleShift * 0.025 * (1 - speed);
-  spine.rotation.z = -idleShift * 0.03 * (1 - speed);
   spine.rotation.x = Math.sin(t * 1.5) * 0.01 + speed * 0.09;
-  hips.position.y = hipY + Math.sin(t * 1.5) * 0.004 + Math.abs(stride) * 0.035 * speed;
-  human.torsoBob = Math.abs(stride) * speed;
 
-  // walk layer
-  legs[0].hip.rotation.x = stride * 0.62 * speed;
-  legs[1].hip.rotation.x = -stride * 0.62 * speed;
-  legs[0].knee.rotation.x = Math.max(0, -stride) * 0.85 * speed;
-  legs[1].knee.rotation.x = Math.max(0, stride) * 0.85 * speed;
+  // run layer
+  const [hipL, kneeL] = legPose(left, GAIT_HIP, GAIT_KNEE);
+  const [hipR, kneeR] = legPose(right, GAIT_HIP, GAIT_KNEE);
+  legs[0].hip.rotation.x = hipL * speed;
+  legs[1].hip.rotation.x = hipR * speed;
+  legs[0].knee.rotation.x = kneeL * speed;
+  legs[1].knee.rotation.x = kneeR * speed;
   legs[0].hip.rotation.z = -idleShift * 0.025 * (1 - speed);
   legs[1].hip.rotation.z = -idleShift * 0.025 * (1 - speed);
 
+  // The pelvis sags as each foot takes weight, so it is lowest twice per cycle and
+  // rides at a gentle once-per-cycle list. A bare abs(sine) here bobbed at double
+  // frequency with a hard cusp at the top, which is a large part of the machine look.
+  const plant = Math.cos(4 * PI * phase);
+  hips.position.y = hipY + Math.sin(t * 1.5) * 0.004 * (1 - speed) - 0.034 * (0.5 - 0.5 * plant) * speed;
+  human.torsoBob = (0.5 - 0.5 * plant) * speed;
+  const list = Math.sin(2 * PI * phase);
+  hips.rotation.z = idleShift * 0.025 * (1 - speed) + list * 0.05 * speed;
+  spine.rotation.z = -idleShift * 0.03 * (1 - speed) - list * 0.04 * speed;
+  spine.rotation.y = -list * 0.07 * speed;
+
+  // A slide is a pose in its own right rather than a squashed stand: legs out in
+  // front, torso laid back. Opt-in via userData.sliding, so the other games are
+  // untouched. Blended so a slide can start and end mid-stride without a pop.
+  const slide = clamp01(character.userData.sliding || 0);
+  if (slide > 0.001) {
+    legs[0].hip.rotation.x += (-1.25 - legs[0].hip.rotation.x) * slide;
+    legs[1].hip.rotation.x += (-0.95 - legs[1].hip.rotation.x) * slide;
+    legs[0].knee.rotation.x += (0.28 - legs[0].knee.rotation.x) * slide;
+    legs[1].knee.rotation.x += (0.62 - legs[1].knee.rotation.x) * slide;
+    hips.rotation.z += (-0.16 - hips.rotation.z) * slide;
+    spine.rotation.x += (0.62 - spine.rotation.x) * slide;
+    spine.rotation.z += (0.1 - spine.rotation.z) * slide;
+  }
+
+  // Identity Dash opts into 'sprinter'. Hanging arms at the sides is what makes a
+  // fast runner read as a figure walking quickly, so this posture carries the elbows
+  // in and pumps the forearms against the opposite leg. It is opt-in because Avatar
+  // Jump and Salubata walk rather than run and should keep the relaxed default.
+  const sprinter = character.userData.armStyle === 'sprinter';
+
   arms.forEach(({ sh, elbow }, i) => {
     const side = i === 0 ? -1 : 1;
+    // Each arm works against the leg on the same side.
+    const armPhase = (i === 0 ? left : right) + 0.5;
+    const swing = Math.cos(2 * PI * armPhase);
+    // The elbow folds through the forward swing and opens on the way back.
+    const swingT = (armPhase - GAIT_STANCE) / (1 - GAIT_STANCE);
+    const flex = swingT > 0 && swingT < 1 ? Math.sin(Math.PI * swingT) : 0;
+
+    if (sprinter) {
+      // Arms tuck in a little as the run speeds up, so they never splay.
+      sh.rotation.z = side * (female ? 0.11 : 0.14) * (1 - 0.4 * speed);
+      // A bigger drive than the walk, because visible arm swing is the point.
+      sh.rotation.x = Math.sin(t * 0.7 + i * PI) * 0.04 * (1 - speed) + swing * 0.74 * speed;
+      // Held bent at roughly a right angle, tightening on the forward drive and
+      // opening on the recovery. Letting this straighten is what reads as a machine.
+      elbow.rotation.x = (-0.2 - Math.sin(t * 0.9 + i) * 0.04) * (1 - speed)
+        - (1.18 + flex * 0.42) * speed;
+      return;
+    }
+
     sh.rotation.z = side * ((female ? 0.1 : 0.13) * (1 - speed));
-    sh.rotation.x = Math.sin(t * 0.7 + i * PI) * 0.05 * (1 - speed) + (i === 0 ? stride : -stride) * 0.5 * speed;
-    elbow.rotation.x = (-0.14 - Math.sin(t * 0.9 + i) * 0.04) * (1 - speed) - Math.max(0, i === 0 ? stride : -stride) * 0.45 * speed;
+    sh.rotation.x = Math.sin(t * 0.7 + i * PI) * 0.05 * (1 - speed) + swing * 0.55 * speed;
+    elbow.rotation.x = (-0.14 - Math.sin(t * 0.9 + i) * 0.04) * (1 - speed) - flex * 0.55 * speed;
   });
 
-  // head stays level and looks around, with a little counter-rotation while walking
+  // head stays level and looks around, with a little counter-rotation while running
   const look = Math.sin(t * 0.42);
   head.rotation.y = Math.sign(look) * Math.pow(Math.abs(look), 1.6) * 0.45 * (1 - speed);
   head.rotation.x = Math.sin(t * 0.31) * 0.06 - 0.02 - speed * 0.06;
   head.rotation.z = idleShift * 0.02 * (1 - speed);
-  spine.rotation.y = -stride * 0.07 * speed;
 
   for (let i = 0; i < sw.length; i++) {
     sw[i].rotation.x = -0.08 + Math.sin(t * 1.3 + i * 0.3) * 0.04 - head.rotation.x;

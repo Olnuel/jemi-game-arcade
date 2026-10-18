@@ -77,8 +77,10 @@ app.innerHTML = `
           <div class="hud" id="hud" aria-live="polite" hidden>
             <div class="hud-score"><span id="hud-score-label">DISTANCE</span><strong id="score-value">000</strong><small id="score-unit">m</small></div>
             <div class="hud-stat"><span class="coin-mark" aria-hidden="true">₦</span><span id="coin-value">0</span><small id="collectible-label">COINS</small></div>
-            <div class="hud-stat life-stat"><span id="hud-life-label">RUNS</span><strong id="life-value">● ● ●</strong></div>
+            <div class="hud-stat life-stat" id="hud-powerup-stat" hidden><span id="hud-life-label">PICKUPS</span><strong id="life-value"></strong></div>
+            <div class="hud-stat life-stat" id="hud-lives-stat"><span id="hud-lives-label">RUNS</span><strong id="lives-value">● ● ●</strong></div>
           <button class="pause-button" id="pause-button" type="button" aria-label="Pause run"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M6.5 4.5v11M13.5 4.5v11" /></svg></button>
+          <p class="run-toast" id="run-toast" hidden aria-live="polite"></p>
           </div>
           <div class="game-message" id="game-message" hidden aria-live="assertive"></div>
           <div class="touch-controls" aria-label="Touch game controls">
@@ -369,12 +371,12 @@ function selectGame(id) {
   description.textContent = game.description;
   document.querySelector('#start-button span').textContent = game.id === 'identity-dash' ? 'Start running' : game.id === 'avatar-jump' ? 'Start climbing' : 'Take your turn';
   document.querySelector('.key-hint').textContent = game.id === 'identity-dash'
-    ? 'ARROWS TO MOVE · SPACE TO JUMP'
+    ? '← → LANE · SPACE JUMP · ↓ SLIDE'
     : game.id === 'avatar-jump'
       ? 'LEFT / RIGHT TO MOVE · SPACE TO JUMP'
       : 'HOLD ↓ TO THROW BACK · ← / → TO AIM · SPACE TO SLIDE';
   document.querySelector('.controls-note p').textContent = game.id === 'identity-dash'
-    ? 'Use the arrow keys and spacebar, or swipe across the road.'
+    ? 'Arrow keys or swipe to change lane. Space to jump, down to slide. Grab the hoverboard and press space to ride it.'
     : game.id === 'avatar-jump'
       ? 'Use left and right to steer, then jump between the floating platforms.'
       : 'Set your back throw, then aim and charge the slipper slide.';
@@ -390,7 +392,19 @@ function selectGame(id) {
 
 function createController() {
   const Game = { 'identity-dash': IdentityDash, 'avatar-jump': AvatarJump, salubata: Salubata }[activeGame.id];
-  controller = new Game(canvas, { style: currentStyle, lighting: readLighting(), onChange: updateRunUI });
+  // A game that fails to construct would otherwise leave `controller` undefined and
+  // every later button press failing on a second, unrelated error that hides the real
+  // one. Surface it on the shelf instead and keep the other titles playable.
+  try {
+    controller = new Game(canvas, { style: currentStyle, lighting: readLighting(), onChange: updateRunUI });
+  } catch (error) {
+    controller = null;
+    console.error(`${activeGame.id} failed to start`, error);
+    document.querySelector('#scene-caption').textContent = 'UNAVAILABLE';
+    description.textContent = 'This title could not start. Pick another from the shelf.';
+    return;
+  }
+  startButton.disabled = false;
 }
 
 function updateRunUI(state) {
@@ -403,11 +417,41 @@ function updateRunUI(state) {
   document.querySelector('#score-unit').textContent = activeGame.id === 'avatar-jump' ? 'pts' : isSalubata ? 'pts' : 'm';
   document.querySelector('#collectible-label').textContent = activeGame.id === 'avatar-jump' ? 'STARS' : isSalubata ? 'BANDS' : 'COINS';
   document.querySelector('#coin-value').textContent = state.coins;
-  document.querySelector('#score-value').textContent = String(state.score).padStart(3, '0');
-  document.querySelector('#best-value').textContent = String(state.best).padStart(3, '0');
-  document.querySelector('#hud-life-label').textContent = isSalubata ? 'TURN' : activeGame.id === 'avatar-jump' ? 'LEVEL' : 'RUNS';
-  document.querySelector('#life-value').textContent = isSalubata ? `${state.turn || 1}/${state.maxTurns || 4}` : activeGame.id === 'avatar-jump' ? `${Math.min(7, (state.level || 1))}/7` : `${'● '.repeat(state.lives).trim()}${state.lives ? ' ' : ''}${'○ '.repeat(3 - state.lives).trim()}`;
+  document.querySelector('#score-value').textContent = String(Math.max(0, state.score)).padStart(3, '0');
+  document.querySelector('#best-value').textContent = String(Math.max(0, state.best)).padStart(3, '0');
   document.querySelector('.coin-mark').textContent = isSalubata ? '◎' : '₦';
+
+  // The third HUD slot means different things per game. Identity Dash spends it on
+  // live power-ups, because a run there is decided by whether you have a magnet or a
+  // board at the moment you need one, and a row of dots would not say that.
+  const powerupStat = document.querySelector('#hud-powerup-stat');
+  const livesStat = document.querySelector('#hud-lives-stat');
+  const lifeValue = document.querySelector('#life-value');
+  const livesValue = document.querySelector('#lives-value');
+  const pickups = state.powerups || [];
+  if (activeGame.id === 'identity-dash') {
+    powerupStat.hidden = pickups.length === 0;
+    livesStat.hidden = state.state !== 'running' && !state.board;
+    lifeValue.textContent = pickups.join(' · ') || '—';
+    livesValue.textContent = state.board ? 'BOARD' : 'RUN';
+  } else {
+    powerupStat.hidden = true;
+    livesStat.hidden = false;
+    document.querySelector('#hud-lives-label').textContent = isSalubata ? 'TURN' : 'LEVEL';
+    livesValue.textContent = isSalubata
+      ? `${state.turn || 1}/${state.maxTurns || 4}`
+      : `${Math.min(7, state.level || 1)}/7`;
+  }
+
+  const toast = document.querySelector('#run-toast');
+  if (state.toast) {
+    toast.textContent = state.toast;
+    toast.hidden = false;
+    toast.classList.remove('is-fading');
+  } else if (!toast.hidden) {
+    toast.classList.add('is-fading');
+    toast.hidden = true;
+  }
   hud.hidden = state.state === 'menu';
   sceneCopy.hidden = state.state !== 'menu';
   pauseButton.hidden = !['running', 'paused'].includes(state.state);
@@ -440,6 +484,7 @@ function updateRunUI(state) {
 }
 
 function startRun() {
+  if (!controller) return;
   scoreSent = false;
   try {
     controller.start();

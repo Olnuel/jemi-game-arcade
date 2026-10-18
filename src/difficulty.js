@@ -5,12 +5,23 @@ const KEY = 'arcade:difficulty';
 const MAX_LEVEL = 4;
 
 // How each level scales the three games. 0 is the gentlest, MAX_LEVEL the hardest.
+//
+// Identity Dash is paced off an endless-runner feel rather than a raw speed dial.
+// dashSpeed is where a run starts, dashCap where it settles, and dashRamp is how
+// long that climb takes, so difficulty grows over a couple of minutes instead of
+// a few seconds. dashGapOpen and dashGapTight are the *world distances* between
+// obstacle rows at the start and at the cap: the gap closes as you speed up, which
+// is what makes the run tighten. Dividing the gap by the current speed gives the
+// spawn interval, so the two never drift apart.
+//
+// jumpWidth and jumpGrace are deliberately still unwired: Avatar Jump's difficulty
+// knobs are landing logic, and tuning them would change how forgiving a fall is.
 export const LEVELS = [
-  { level: 0, name: 'Chill',      dashSpeed: 8.0,  dashRamp: 0.10, dashSpawn: 1.45, jumpWidth: 1.00, jumpGrace: 0.24, saluDecel: 3.9, saluReach: 0.58 },
-  { level: 1, name: 'Warming up', dashSpeed: 8.6,  dashRamp: 0.115, dashSpawn: 1.38, jumpWidth: 0.96, jumpGrace: 0.22, saluDecel: 4.3, saluReach: 0.56 },
-  { level: 2, name: 'Getting real', dashSpeed: 9.3, dashRamp: 0.13, dashSpawn: 1.30, jumpWidth: 0.92, jumpGrace: 0.19, saluDecel: 4.8, saluReach: 0.53 },
-  { level: 3, name: 'Tough',      dashSpeed: 10.1, dashRamp: 0.15, dashSpawn: 1.22, jumpWidth: 0.88, jumpGrace: 0.16, saluDecel: 5.3, saluReach: 0.50 },
-  { level: 4, name: 'Danfo-bus fast', dashSpeed: 11.0, dashRamp: 0.17, dashSpawn: 1.14, jumpWidth: 0.84, jumpGrace: 0.13, saluDecel: 5.9, saluReach: 0.47 },
+  { level: 0, name: 'Chill',          dashSpeed: 9.0,  dashRamp: 0.030, dashCap: 13.5, dashGapOpen: 13.0, dashGapTight: 10.5, jumpWidth: 1.00, jumpGrace: 0.24, saluDecel: 3.9, saluReach: 0.58 },
+  { level: 1, name: 'Warming up',     dashSpeed: 9.6,  dashRamp: 0.032, dashCap: 13.5, dashGapOpen: 12.6, dashGapTight: 10.2, jumpWidth: 0.96, jumpGrace: 0.22, saluDecel: 4.3, saluReach: 0.56 },
+  { level: 2, name: 'Getting real',   dashSpeed: 10.2, dashRamp: 0.034, dashCap: 13.5, dashGapOpen: 12.2, dashGapTight: 9.9,  jumpWidth: 0.92, jumpGrace: 0.19, saluDecel: 4.8, saluReach: 0.53 },
+  { level: 3, name: 'Tough',          dashSpeed: 10.8, dashRamp: 0.036, dashCap: 13.5, dashGapOpen: 11.8, dashGapTight: 9.6,  jumpWidth: 0.88, jumpGrace: 0.16, saluDecel: 5.3, saluReach: 0.50 },
+  { level: 4, name: 'Danfo-bus fast', dashSpeed: 11.4, dashRamp: 0.038, dashCap: 13.5, dashGapOpen: 11.4, dashGapTight: 9.3,  jumpWidth: 0.84, jumpGrace: 0.13, saluDecel: 5.9, saluReach: 0.47 },
 ];
 
 function blank() {

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { animatePlayerCharacter, applyPlayerCharacterStyle, createPlayerCharacter, FOOT_Y, PREVIEW_STYLE } from '../identity/player-character.js';
 import { addMarketStall, addStringLights, makeLabel } from '../scene/lagos-night-market.js';
 import { applyLighting, LIGHT_PRESETS, readLighting } from '../scene/sky.js';
+import { QUALITY, createFrameGovernor, rendererOptions } from '../render-quality.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 // The figure is modelled with its feet at the root, so the root sits just above
@@ -115,6 +116,7 @@ export class AvatarJump {
     this.state = 'menu';
     this.score = 0;
     this.stars = 0;
+    this.coinsRequired = 0;
     let savedBest = 0;
     try {
       savedBest = Number(localStorage.getItem('arcade:avatar-jump:best') || 0);
@@ -130,10 +132,10 @@ export class AvatarJump {
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 8, 14);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+    this.renderer = new THREE.WebGLRenderer(rendererOptions(canvas));
+    this.governPixelRatio = createFrameGovernor((ratio) => this.renderer.setPixelRatio(ratio));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = QUALITY.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.14;
@@ -201,21 +203,76 @@ export class AvatarJump {
   }
 
   buildCourse() {
-    const course = [
-      { x: 0, y: 0, start: true, color: '#25574f', edge: '#f09650' },
-      { x: 1.25, y: 1.8, color: '#b85e35', edge: '#f3c276' },
-      { x: -0.95, y: 3.6, color: '#2a6a62', edge: '#58e3cb' },
-      { x: 1.05, y: 5.4, color: '#c77f3a', edge: '#ffe596' },
-      { x: -1.1, y: 7.2, color: '#314e60', edge: '#52d1d8' },
-      { x: 0.82, y: 9.0, color: '#aa5537', edge: '#fca867' },
-      { x: 0, y: 10.8, finish: true, color: '#204f4a', edge: '#ffd166' },
-    ];
+    applyLighting(this.scene, this.lighting);
+
+    // Market glow: Nigerian green, ember and danfo yellow. It carries the night,
+    // so it is dimmed in daylight.
+    this.washes = [];
+    const addWash = (color, intensity, x, y, z) => {
+      const light = new THREE.PointLight(color, intensity, 22, 2);
+      light.position.set(x, y, z);
+      this.scene.add(light);
+      this.washes.push({ light, base: intensity });
+      return light;
+    };
+    addWash('#00d98a', 25, -4.5, 6, -1.8);
+    addWash('#ff5722', 28, 4.5, 7, -1.4);
+    addWash('#ffcc00', 32, 0, 13.5, 1);
+
+    const haze = new THREE.Mesh(
+      new THREE.PlaneGeometry(55, 65),
+      new THREE.MeshBasicMaterial({ color: '#234148', transparent: true, opacity: 0.45 }),
+    );
+    haze.rotation.x = -Math.PI / 2;
+    haze.position.set(0, -1.1, -13);
+    this.scene.add(haze);
+
+    // How many coins must be collected before the finish platform counts.
+    this.coinsRequired = 15;
+
+    // Generate a long climbing course of many platforms (hurdles) zigzagging left,
+    // centre and right as they rise. Consecutive platforms are never more than one
+    // lane apart so every jump is reachable — the player must still time each jump.
+    const platformCount = 30;
+    const laneStep = 1.2;
+    const lanes = [-laneStep, 0, laneStep];
+    const course = [];
+    let laneIndex = 1; // start in the centre lane
+    for (let i = 0; i < platformCount; i += 1) {
+      const isStart = i === 0;
+      const isFinish = i === platformCount - 1;
+      const x = lanes[laneIndex];
+      const y = i * 1.8;
+      // Every 4th platform is a narrow hurdle; start and finish are wide.
+      const width = isStart || isFinish ? 2.8 : i % 4 === 0 ? 1.1 : 2.0;
+      const hue = (i * 43) % 360;
+      const color = `hsl(${hue}, 70%, 55%)`;
+      course.push({
+        x, y,
+        start: isStart,
+        finish: isFinish,
+        color,
+        edge: isFinish ? '#ffd166' : '#f09650',
+        width,
+        depth: isFinish ? 2.45 : 2.25,
+      });
+      // Pick the next lane: never more than one step away so the jump stays reachable.
+      if (!isFinish) {
+        if (laneIndex === 0) {
+          laneIndex = Math.random() < 0.5 ? 0 : 1; // stay or move to centre
+        } else if (laneIndex === 2) {
+          laneIndex = Math.random() < 0.5 ? 2 : 1; // stay or move to centre
+        } else {
+          laneIndex = Math.floor(Math.random() * 3); // centre can go anywhere
+        }
+      }
+    }
 
     for (let index = 0; index < course.length; index += 1) {
       const step = course[index];
       const platform = new THREE.Group();
-      const width = step.start ? 2.8 : step.finish ? 2.85 : 2.15;
-      const depth = step.finish ? 2.45 : 2.25;
+      const width = step.width;
+      const depth = step.depth;
 
       const slabMat = new THREE.MeshStandardMaterial({
         color: step.color,
@@ -387,6 +444,7 @@ export class AvatarJump {
     this.state = 'running';
     this.score = 0;
     this.stars = 0;
+    this.coinsRequired = 15;
     this.platformIndex = 0;
     this.targetX = this.platforms[0].position.x;
     this.character.position.set(this.targetX, this.platforms[0].userData.top + PLAYER_FOOT_OFFSET, 0);
@@ -446,9 +504,11 @@ export class AvatarJump {
       this.score += 100;
     }
     if (platform.userData.finish) {
-      this.state = 'won';
-      sound.playWin();
-      this.best = persistBestScore(this.score, this.best);
+      if (this.stars >= this.coinsRequired) {
+        this.state = 'won';
+        sound.playWin();
+        this.best = persistBestScore(this.score, this.best);
+      }
     }
     this.notify();
   }
@@ -542,12 +602,13 @@ export class AvatarJump {
       state: this.state,
       score: this.score,
       coins: this.stars,
+      coinsRequired: this.coinsRequired,
       best: this.best,
       lives: 1,
       level: (this.platformIndex || 0) + 1,
       type: 'jump',
       resultTitle: this.state === 'won' ? 'Top of the world.' : 'Missed the landing.',
-      resultBody: `${this.stars} stars collected · ${this.score} points`,
+      resultBody: `${this.stars}/${this.coinsRequired} coins · ${this.score} points`,
       resultAction: 'Climb again',
     });
   }
@@ -557,6 +618,7 @@ export class AvatarJump {
     const dt = Math.min(0.04, Math.max(0, (now - this.lastFrame) / 1000));
     this.lastFrame = now;
     this.update(dt);
+    this.governPixelRatio(dt);
     this.renderer.render(this.scene, this.camera);
     if (this.state === 'running' && Math.floor(this.elapsed * 5) !== Math.floor((this.elapsed - dt) * 5)) {
       this.notify();

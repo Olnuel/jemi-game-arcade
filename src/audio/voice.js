@@ -42,10 +42,9 @@ export function voiceSupported() {
 function pickVoice() {
   const list = loadVoices();
   if (!list.length) return null;
-  // Prefer a Nigerian or West African English voice when the platform offers one.
-  const preferred = list.find((voice) => /en-NG|en-NG/i.test(voice.lang))
-    || list.find((voice) => /^en[-_]/i.test(voice.lang) && /female|samantha|karen|zira/i.test(voice.name))
-    || list.find((voice) => /^en[-_]/i.test(voice.lang));
+  // English voices only. The user asked for English, so never fall back to a
+  // non-English accent just because it happened to sort first.
+  const preferred = list.find((voice) => /^en[-_]/i.test(voice.lang));
   return preferred || list[0];
 }
 
@@ -80,38 +79,38 @@ const pick = (lines) => lines[Math.floor(Math.random() * lines.length)];
 const LINES = {
   'identity-dash': {
     won: [
-      'You did well! Clean run, no wahala.',
-      'Chop life! That was a proper run.',
-      'Sharp! You cross the whole street.',
+      'Nice run! You made it clean.',
+      'Great job! That was a solid run.',
+      'Sharp! You crossed the whole street.',
     ],
     lost: [
-      'No wahala. Take the next one, you go make it.',
-      'That one got you, but small small. Try again.',
-      'Do not give up. One more run.',
+      "No worries. Take the next one, you'll make it.",
+      'That one got you, but try again.',
+      "Don't give up. One more run.",
     ],
   },
   'avatar-jump': {
     won: [
-      'You climb am reach! E no easy.',
-      'Top of the world! You take am.',
-      'You reach the top! Sharp sharp.',
+      'You made it to the top! That was not easy.',
+      'Top of the world! You did it.',
+      'You reached the top! Well done.',
     ],
     lost: [
-      'You nearly get there. Try again, you go reach am.',
-      'The fall catch you. Go back and climb again.',
-      'Do not give up. The rooftop dey wait for you.',
+      'You almost made it. Try again.',
+      'The fall caught you. Climb back up.',
+      "Don't give up. The rooftop is waiting.",
     ],
   },
   salubata: {
     won: [
-      'Street champion! All the bands gone.',
-      'You clear am! Every band don go.',
-      'Sharp! The circle no get you.',
+      'Street champion! All the bands are gone.',
+      'You cleared it! Every band is gone.',
+      'Sharp! The circle did not get you.',
     ],
     lost: [
-      'Your turns don finish, but you nearly get there.',
-      'Try again small small, you go win am.',
-      'Do not give up. One more round.',
+      'Your turns are finished, but you almost made it.',
+      'Try again, you will win it.',
+      "Don't give up. One more round.",
     ],
   },
 };

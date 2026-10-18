@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "cover": "node scripts/make-cover.mjs",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/games/identity-dash.js && node --check src/games/avatar-jump.js && node --check src/games/salubata.js && node --check src/identity/player-character.js && node --check src/identity/startng.js && node --check src/audio/sound.js"
+    "check": "node --check src/main.js && node --check src/games/identity-dash.js && node --check src/games/avatar-jump.js && node --check src/games/salubata.js && node --check src/identity/player-character.js && node --check src/identity/startng.js && node --check src/audio/sound.js && node --check src/games/dash/rules.js && node --check src/games/dash/runner-state.js && node --check src/games/dash/patterns.js && node --check src/games/dash/progression.js && node --check src/games/dash/obstacles.js && node --check src/games/dash/pickups.js"
   },
   "dependencies": {
     "three": "^0.186.1"
