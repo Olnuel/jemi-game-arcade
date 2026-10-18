@@ -150,3 +150,4 @@ vite.config.ts.timestamp-*
 
 # start.ng hosts the built game, so the production bundle must be committed.
 !dist/
+.vercel

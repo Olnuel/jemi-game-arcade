@@ -261,6 +261,13 @@ test('a hurdle blocks a runner on the ground and not one in the air', () => {
   assert.equal(blocksLane('hurdle', 1, 1, { feetY: 0.8, sliding: false }), false);
 });
 
+test('a hurdle blocks a runner in any lane when they are in that lane', () => {
+  for (let lane = 0; lane < LANE_COUNT; lane += 1) {
+    assert.equal(blocksLane('hurdle', lane, lane, standing), true, `hurdle blocks in lane ${lane}`);
+    assert.equal(blocksLane('hurdle', lane, lane, { feetY: 0.8, sliding: false }), false, `airborne hurdle miss in lane ${lane}`);
+  }
+});
+
 test('a gantry blocks a standing runner and not a sliding one', () => {
   assert.equal(blocksLane('gantry', 1, 1, standing), true);
   assert.equal(blocksLane('gantry', 1, 1, sliding), false);

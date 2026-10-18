@@ -88,16 +88,20 @@ function playRun({ seed = 1, seconds = 90, sloppy = false } = {}) {
         const target = options[0];
         if (target.lane !== runner.lane) changeLane(runner, Math.sign(target.lane - runner.lane), LANE_COUNT);
         if (target.verb === 'jump' || target.verb === 'slide') {
-          // Trigger on how long the verb actually takes, not a fixed lead. A fixed
-          // lead cannot work: at the cap the gap after a recovery row is about 1.4s,
-          // which is less than a generous lead, so the bot would jump too early and
-          // land before the row arrived.
-          const need = target.verb === 'jump' ? JUMP_TIME : SLIDE_TIME;
-          const timeToArrive = (-(nextRow.z + nextRow.length / 2)) / speed;
-          const lead = sloppy ? need + 0.5 : need + 0.12;
-          if (timeToArrive < lead) {
-            if (target.verb === 'jump' && runner.jumpTime === 0) jump(runner);
-            else if (target.verb === 'slide' && !isSliding(runner)) duck(runner);
+          // Trigger the verb once per row, when the obstacle is close enough that
+          // the verb will still be active on arrival. Triggering too early means the
+          // runner lands before the obstacle arrives; triggering too late means
+          // collision. The lead time is tuned so the runner is mid-air/mid-slide
+          // exactly when the row arrives.
+          if (!nextRow.verbTriggered) {
+            const need = target.verb === 'jump' ? JUMP_TIME : SLIDE_TIME;
+            const timeToArrive = (-(nextRow.z + nextRow.length / 2)) / speed;
+            const lead = target.verb === 'jump' ? JUMP_TIME * 0.85 : SLIDE_TIME * 0.9;
+            if (timeToArrive < lead) {
+              nextRow.verbTriggered = true;
+              if (target.verb === 'jump') jump(runner);
+              else if (target.verb === 'slide') duck(runner);
+            }
           }
         }
       }

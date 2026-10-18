@@ -93,7 +93,7 @@ export function blocksLane(kind, lane, runnerLane, runner) {
   const obstacle = OBSTACLES[kind];
   if (!obstacle) return false;
   const box = bodyBox(runner);
-  if (!overlapsX(LANES[lane], obstacle.halfWidth, 0, box.halfWidth)) return false;
+  if (!overlapsX(LANES[lane], obstacle.halfWidth, LANES[runnerLane], box.halfWidth)) return false;
   // Strict overlap: touching the top of a barrier or the underside of a banner is a
   // clear, not a hit, which is what stops the clear window feeling pixel-hunty.
   return box.bottom < obstacle.top - EDGE_EPSILON && box.top > obstacle.bottom + EDGE_EPSILON;
